@@ -38,6 +38,7 @@ import {
 
 
 const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
+import { PdfPreviewDialog } from "@/components/projeto/PdfPreviewDialog";
 
 export const Route = createFileRoute("/projeto")({
   head: () => ({
