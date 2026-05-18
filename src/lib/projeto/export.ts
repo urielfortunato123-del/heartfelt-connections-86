@@ -448,34 +448,53 @@ export function exportPdfPlacas(
       const startX = marginX > 0 ? marginX : (W - totalW) / 2;
       const plateY = marginTop;
 
+      // O km "r.km" segue o sentido do projeto (asc: cresce; desc: decresce).
+      // mirror() é simétrico — devolve o mesmo ponto físico medido a partir
+      // do outro extremo. Funciona corretamente seja qual for a ordem de
+      // startKm/endKm (ex.: 120→0 ou 0→120).
+      const oppositeKm = mirror(r.km);
 
+      // A faixa do projeto define qual sentido é o "direto" (lado direito da
+      // pista, no sentido de leitura do motorista). O outro lado é o oposto.
+      const projectIsAsc = meta.direction === "asc";
 
-      // Lado esquerdo da pista: sentido DECRESCENTE → km espelhado
-      const leftKm = mirror(r.km);
+      const rightSide = {
+        km: r.km,
+        title: projectIsAsc ? "LADO DIREITO · CRESCENTE →" : "LADO DIREITO · DECRESCENTE →",
+        color: projectIsAsc ? ([16, 185, 129] as [number, number, number]) : ([200, 60, 60] as [number, number, number]),
+      };
+      const leftSide = {
+        km: oppositeKm,
+        title: projectIsAsc ? "← LADO ESQUERDO · DECRESCENTE" : "← LADO ESQUERDO · CRESCENTE",
+        color: projectIsAsc ? ([200, 60, 60] as [number, number, number]) : ([16, 185, 129] as [number, number, number]),
+      };
+
+      // Lado esquerdo da pista (sentido contrário ao do projeto)
       drawPlate(doc, {
         x: startX,
         y: plateY,
         w: plateW,
         h: plateH,
-        title: "← LADO ESQUERDO · DECRESCENTE",
-        titleColor: [200, 60, 60],
-        kmLabel: formatKmLabel(leftKm, kmFormat),
+        title: leftSide.title,
+        titleColor: leftSide.color,
+        kmLabel: formatKmLabel(leftSide.km, kmFormat),
         subline,
         descricao: r.descricao,
       });
 
-      // Lado direito da pista: sentido CRESCENTE → km original
+      // Lado direito da pista (sentido do projeto)
       drawPlate(doc, {
         x: startX + plateW + gap,
         y: plateY,
         w: plateW,
         h: plateH,
-        title: "LADO DIREITO · CRESCENTE →",
-        titleColor: [16, 185, 129],
-        kmLabel: formatKmLabel(r.km, kmFormat),
+        title: rightSide.title,
+        titleColor: rightSide.color,
+        kmLabel: formatKmLabel(rightSide.km, kmFormat),
         subline,
         descricao: r.descricao,
       });
+
     } else {
       drawPlate(doc, {
         x: 60,
