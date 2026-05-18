@@ -194,9 +194,37 @@ function Index() {
                 className="mt-6 w-full accent-cyan-400"
               />
 
-              <div className="mt-3 font-mono text-[10px] tracking-[0.3em] text-white/30">
+              <div className="mt-6 flex flex-wrap gap-2">
+                {[1, 5, 10, 100, 1000].map((preset) => {
+                  const active = km === preset;
+                  return (
+                    <motion.button
+                      key={preset}
+                      type="button"
+                      onClick={() => setKm(preset)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`rounded-full border px-4 py-1.5 font-mono text-xs tracking-[0.2em] transition-colors ${
+                        active
+                          ? "border-cyan-400/70 bg-cyan-400/10 text-cyan-200"
+                          : "border-white/10 bg-white/[0.03] text-white/60 hover:border-white/30 hover:text-white"
+                      }`}
+                      style={
+                        active
+                          ? { boxShadow: "0 0 24px -4px rgba(34,211,238,.6)" }
+                          : undefined
+                      }
+                    >
+                      {preset} KM
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 font-mono text-[10px] tracking-[0.3em] text-white/30">
                 ↔ EDIT ANY FIELD · BIDIRECTIONAL
               </div>
+
 
               <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
                 {UNITS.map((u, i) => {
