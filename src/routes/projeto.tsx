@@ -775,7 +775,7 @@ function ProjetoPage() {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7"
-                            onClick={() => setManuals((arr) => arr.filter((x) => x.id !== r.id))}
+                            onClick={() => commitManuals((arr) => arr.filter((x) => x.id !== r.id))}
                             title="Remover ponto manual"
                           >
                             <Trash2 className="h-4 w-4" />
