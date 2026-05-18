@@ -426,7 +426,47 @@ function ProjetoPage() {
           <Button variant="destructive" size="sm" className="w-full" onClick={resetAll}>
             <Trash2 className="mr-1 h-4 w-4" /> Limpar projeto
           </Button>
+
+          <details className="rounded border border-white/10 bg-black/30 p-3 text-xs">
+            <summary className="cursor-pointer font-semibold uppercase tracking-wider text-white/60">
+              Layout PDF placas (2 lados)
+            </summary>
+            <div className="mt-3 space-y-2">
+              {([
+                ["plateW", "Largura placa (mm)", 40, 140, 1],
+                ["plateH", "Altura placa (mm)", 40, 200, 1],
+                ["gap", "Espaçamento entre placas (mm)", 0, 80, 1],
+                ["marginTop", "Margem superior (mm)", 10, 120, 1],
+                ["marginX", "Margem lateral (mm, 0 = centralizar)", 0, 80, 1],
+              ] as const).map(([key, label, min, max, step]) => (
+                <div key={key} className="space-y-1">
+                  <Label className="text-[11px] text-white/70">
+                    {label}: <span className="text-cyan-300">{bothLayout[key]}</span>
+                  </Label>
+                  <Input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={bothLayout[key]}
+                    onChange={(e) =>
+                      setBothLayout((l) => ({ ...l, [key]: Number(e.target.value) }))
+                    }
+                  />
+                </div>
+              ))}
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => setBothLayout(DEFAULT_BOTH_LAYOUT)}
+              >
+                Restaurar padrão
+              </Button>
+            </div>
+          </details>
         </aside>
+
 
         {/* Mapa + tabela */}
         <section className="space-y-4">
