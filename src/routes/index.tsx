@@ -436,7 +436,7 @@ function Index() {
                   inputMode="decimal"
                   min={0}
                   aria-label="Distance in kilometers"
-                  value={Number.isFinite(km) ? km : ""}
+                  value={Number.isFinite(km) ? Number(km.toFixed(3)) : ""}
                   onChange={(e) => setKm(parseFloat(e.target.value))}
                   className="w-full rounded-md bg-transparent text-5xl font-light tracking-tight text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:text-6xl"
                   placeholder="0"
@@ -472,7 +472,7 @@ function Index() {
                       value={wholeKm}
                       onChange={(e) => {
                         const k = parseInt(e.target.value, 10) || 0;
-                        setKm(k + meters / 1000);
+                        setKm(Math.round((k + meters / 1000) * 1000) / 1000);
                       }}
                       className="mt-6 w-full rounded-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                     />
@@ -501,7 +501,7 @@ function Index() {
                         // 1000 m rola para o próximo km automaticamente
                         const nextKm =
                           m >= 1000 ? Math.min(wholeKm + 1, MAX_RANGE) : wholeKm + m / 1000;
-                        setKm(nextKm);
+                        setKm(Math.round(nextKm * 1000) / 1000);
                       }}
                       className="mt-2 w-full rounded-full accent-fuchsia-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
                       style={{ accentColor: "#d946ef" }}
