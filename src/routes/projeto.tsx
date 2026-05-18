@@ -297,7 +297,7 @@ function ProjetoPage() {
     setStart(null);
     setEnd(null);
     setPolyline([]);
-    setManuals([]);
+    replaceManuals([]);
     setDescriptions({});
     setMode("start");
     setMeta((m) => ({ ...m, startKm: 0, endKm: 0 }));
