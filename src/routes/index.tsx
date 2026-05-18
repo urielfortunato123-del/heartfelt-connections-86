@@ -9,7 +9,11 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Speedometer } from "@/components/Speedometer";
 import {
   DISTANCE_UNITS,
+  derToKm,
+  formatDer,
   formatNumber,
+  kmToDer,
+  kmToHectometros,
   toEditableString,
 } from "@/lib/converters/distance";
 
@@ -83,6 +87,115 @@ function formatTravelTime(hours: number): string {
   const days = Math.floor(h / 24);
   const remHours = h % 24;
   return `${days}d ${remHours}h`;
+}
+
+function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
+  const der = kmToDer(km);
+  const hm = kmToHectometros(km);
+  const meters = km * 1000;
+  return (
+    <section
+      aria-label="Conversão DER · Estaca e Hectômetro"
+      className="mt-6 overflow-hidden rounded-2xl border border-fuchsia-400/20 bg-black/40 p-5"
+      style={{ boxShadow: "0 0 40px -20px rgba(168,85,247,.5) inset" }}
+    >
+      <div className="mb-3 flex items-center justify-between font-mono text-[10px] tracking-[0.3em]">
+        <span className="text-fuchsia-300">DER · ESTACA / HECTÔMETRO</span>
+        <span className="text-white/30">PADRÃO BRASILEIRO</span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <label
+            htmlFor="der-estacas"
+            className="block font-mono text-[10px] tracking-[0.25em] text-white/40"
+          >
+            ESTACAS <span className="text-white/30">(20 m cada)</span>
+          </label>
+          <div className="mt-1 flex items-end gap-2">
+            <input
+              id="der-estacas"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              aria-label="Número de estacas"
+              value={der.estacas}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setKm(derToKm(Number.isFinite(v) ? v : 0, der.extra));
+              }}
+              className="w-full rounded bg-transparent text-2xl font-light text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
+              placeholder="0"
+            />
+            <span className="pb-1 font-mono text-[10px] tracking-[0.3em] text-fuchsia-300">EST</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <label
+            htmlFor="der-extra"
+            className="block font-mono text-[10px] tracking-[0.25em] text-white/40"
+          >
+            EXCEDENTE <span className="text-white/30">(0–19 m)</span>
+          </label>
+          <div className="mt-1 flex items-end gap-2">
+            <input
+              id="der-extra"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={19.99}
+              step={0.1}
+              aria-label="Metros excedentes"
+              value={der.extra}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setKm(derToKm(der.estacas, Number.isFinite(v) ? v : 0));
+              }}
+              className="w-full rounded bg-transparent text-2xl font-light text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
+              placeholder="0"
+            />
+            <span className="pb-1 font-mono text-[10px] tracking-[0.3em] text-fuchsia-300">M</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <label
+            htmlFor="der-hm"
+            className="block font-mono text-[10px] tracking-[0.25em] text-white/40"
+          >
+            HECTÔMETROS <span className="text-white/30">(100 m)</span>
+          </label>
+          <div className="mt-1 flex items-end gap-2">
+            <input
+              id="der-hm"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={0.1}
+              aria-label="Hectômetros"
+              value={toEditableString(hm)}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setKm(Number.isFinite(v) ? v / 10 : 0);
+              }}
+              className="w-full rounded bg-transparent text-2xl font-light text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
+              placeholder="0"
+            />
+            <span className="pb-1 font-mono text-[10px] tracking-[0.3em] text-fuchsia-300">HM</span>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] tracking-[0.25em] text-white/40">
+        <span>
+          NOTAÇÃO:{" "}
+          <span className="text-fuchsia-300">Estaca {formatDer(der)}</span>
+        </span>
+        <span>
+          = <span className="text-white">{formatNumber(meters)} m</span> ·{" "}
+          <span className="text-white">{formatNumber(km)} km</span>
+        </span>
+      </div>
+    </section>
+  );
 }
 
 function Index() {
@@ -436,6 +549,9 @@ function Index() {
                   );
                 })}
               </div>
+
+              {/* DER · Estaca / Hectômetro (Padrão Brasileiro) */}
+              <DerPanel km={Number.isFinite(km) ? km : 0} setKm={setKm} />
 
               {/* Travel time strip */}
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/30 px-4 py-3">
