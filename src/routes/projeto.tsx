@@ -105,6 +105,88 @@ function ProjetoPage() {
   const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
   const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
 
+  // ---------- Histórico (undo/redo) dos pontos manuais ----------
+  const manualsRef = useRef<Manual[]>([]);
+  useEffect(() => { manualsRef.current = manuals; }, [manuals]);
+  const past = useRef<Manual[][]>([]);
+  const future = useRef<Manual[][]>([]);
+  const draggingId = useRef<string | null>(null);
+  const HISTORY_LIMIT = 100;
+
+  const pushSnapshot = useCallback((snapshot: Manual[]) => {
+    past.current.push(snapshot);
+    if (past.current.length > HISTORY_LIMIT) past.current.shift();
+    future.current = [];
+  }, []);
+
+  /** Replace estado e zera histórico (usar em restore/reset). */
+  const replaceManuals = useCallback((next: Manual[]) => {
+    past.current = [];
+    future.current = [];
+    manualsRef.current = next;
+    setManuals(next);
+  }, []);
+
+  /** Atualiza manuals criando um checkpoint no histórico. */
+  type Updater = Manual[] | ((prev: Manual[]) => Manual[]);
+  const commitManuals = useCallback((updater: Updater) => {
+    const prev = manualsRef.current;
+    const next = typeof updater === "function" ? (updater as (p: Manual[]) => Manual[])(prev) : updater;
+    if (next === prev) return;
+    pushSnapshot(prev);
+    manualsRef.current = next;
+    setManuals(next);
+  }, [pushSnapshot]);
+
+  /** Atualização "transitória" (usada no arraste). Coalesce em um único snapshot. */
+  const liveManuals = useCallback((id: string, updater: Updater) => {
+    const prev = manualsRef.current;
+    if (draggingId.current !== id) {
+      // primeiro movimento do arraste — snapshot do estado anterior
+      pushSnapshot(prev);
+      draggingId.current = id;
+    }
+    const next = typeof updater === "function" ? (updater as (p: Manual[]) => Manual[])(prev) : updater;
+    manualsRef.current = next;
+    setManuals(next);
+  }, [pushSnapshot]);
+
+  const endLive = useCallback(() => { draggingId.current = null; }, []);
+
+  const undo = useCallback(() => {
+    const prev = past.current.pop();
+    if (!prev) return;
+    future.current.push(manualsRef.current);
+    manualsRef.current = prev;
+    setManuals(prev);
+    toast("Desfeito", { duration: 1200 });
+  }, []);
+
+  const redo = useCallback(() => {
+    const next = future.current.pop();
+    if (!next) return;
+    past.current.push(manualsRef.current);
+    manualsRef.current = next;
+    setManuals(next);
+    toast("Refeito", { duration: 1200 });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const editable = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement | null)?.isContentEditable;
+      if (editable) return; // não interceptar quando digitando em inputs
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((key === "y") || (key === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo]);
+  // --------------------------------------------------------------
+
   const kmRange = useMemo(() => {
     const lo = Math.min(meta.startKm, meta.endKm);
     const hi = Math.max(meta.startKm, meta.endKm);
