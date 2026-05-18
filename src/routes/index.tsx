@@ -352,6 +352,14 @@ function Index() {
       url.searchParams.delete("km");
     }
     if (url.toString() === window.location.href) return;
+    // Desativa a restauração automática de scroll do navegador/roteador
+    // enquanto sincronizamos ?km= via slider/input — evita "saltos" da página.
+    const prevRestoration = window.history.scrollRestoration;
+    try {
+      window.history.scrollRestoration = "manual";
+    } catch {
+      // alguns navegadores podem rejeitar — seguir adiante
+    }
     const x = window.scrollX;
     const y = window.scrollY;
     // Preserva foco + seleção do campo ativo (ex.: input de metros) ao mexer na URL.
@@ -395,7 +403,14 @@ function Index() {
         }
       }
     };
-    requestAnimationFrame(restore);
+    requestAnimationFrame(() => {
+      restore();
+      try {
+        window.history.scrollRestoration = prevRestoration;
+      } catch {
+        // ignore
+      }
+    });
   }, []);
 
 
