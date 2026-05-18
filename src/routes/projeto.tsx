@@ -110,6 +110,8 @@ function ProjetoPage() {
   const [gridLayout, setGridLayout] = useState<GridLayout>(DEFAULT_GRID_LAYOUT);
   const [pageFormat, setPageFormat] = useState<PageFormat>("a4");
   const [pageOrientation, setPageOrientation] = useState<PageOrientation>("landscape");
+  const [showHeader, setShowHeader] = useState(true);
+  const [showPageNumber, setShowPageNumber] = useState(true);
   const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
   const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
@@ -465,7 +467,7 @@ function ProjetoPage() {
               size="sm"
               variant="secondary"
               onClick={() => {
-                const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob", gridLayout, pageFormat, pageOrientation) as Blob | undefined;
+                const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob", gridLayout, pageFormat, pageOrientation, showHeader, showPageNumber) as Blob | undefined;
                 if (blob) {
                   setPreviewBlob(blob);
                   setPreviewOpen(true);
@@ -644,6 +646,24 @@ function ProjetoPage() {
                     <option value="portrait">Retrato</option>
                   </select>
                 </div>
+              </div>
+              <div className="flex flex-col gap-1 rounded border border-white/10 bg-black/20 p-2">
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={showHeader}
+                    onChange={(e) => setShowHeader(e.target.checked)}
+                  />
+                  Mostrar cabeçalho da página
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={showPageNumber}
+                    onChange={(e) => setShowPageNumber(e.target.checked)}
+                  />
+                  Mostrar numeração de página
+                </label>
               </div>
               {([
                 ["cols", "Colunas", 1, 6, 1],

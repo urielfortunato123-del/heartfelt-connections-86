@@ -340,6 +340,8 @@ export function exportPdfPlacas(
   gridLayout: GridLayout = DEFAULT_GRID_LAYOUT,
   pageFormat: PageFormat = "a4",
   pageOrientation: PageOrientation = "landscape",
+  showHeader: boolean = true,
+  showPageNumber: boolean = true,
 ): Blob | void {
 
 
@@ -442,23 +444,36 @@ export function exportPdfPlacas(
     const plateW = (W - marginX * 2 - gap * (cols - 1)) / cols;
     const plateH = (H - marginTop - marginBottom - gap * (rowsPerPage - 1)) / rowsPerPage;
 
+    const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
+
     rows.forEach((r, idx) => {
       const slot = idx % perPage;
       if (slot === 0) {
         doc.addPage();
-        // Fundo + header da página
+        // Fundo da página
         doc.setFillColor(15, 23, 42);
         doc.rect(0, 0, W, H, "F");
-        doc.setTextColor(168, 85, 247);
-        doc.setFontSize(13);
-        doc.text(`${meta.name} · Placas (consolidado)`, 14, 12);
-        doc.setTextColor(180);
-        doc.setFontSize(9);
-        doc.text(
-          `Sentido: ${meta.direction === "asc" ? "Crescente (+km)" : "Decrescente (-km)"}   ·   página ${Math.floor(idx / perPage) + 1}`,
-          14,
-          18,
-        );
+
+        const pageNum = Math.floor(idx / perPage) + 1;
+
+        if (showHeader) {
+          doc.setTextColor(168, 85, 247);
+          doc.setFontSize(13);
+          doc.text(`${meta.name} · Placas (consolidado)`, 14, 12);
+          doc.setTextColor(180);
+          doc.setFontSize(9);
+          doc.text(
+            `Sentido: ${meta.direction === "asc" ? "Crescente (+km)" : "Decrescente (-km)"}`,
+            14,
+            18,
+          );
+        }
+
+        if (showPageNumber) {
+          doc.setTextColor(180);
+          doc.setFontSize(9);
+          doc.text(`Página ${pageNum} / ${totalPages}`, W - 14, H - 4, { align: "right" });
+        }
       }
 
       const col = slot % cols;
@@ -482,6 +497,7 @@ export function exportPdfPlacas(
         descricao: r.descricao,
       });
     });
+
 
     if (outputMode === "blob") return doc.output("blob");
     doc.save(`${slug(meta.name)}-placas-grid.pdf`);
