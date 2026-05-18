@@ -389,24 +389,28 @@ export function exportPdfPlacas(
     { align: "center" },
   );
 
-  // Caixa de info
+  // Caixa de info (responsiva à largura da página)
+  const boxX = Math.max(20, W * 0.17);
+  const boxW = W - boxX * 2;
+  const col1X = boxX + 10;
+  const col2X = boxX + boxW / 2 + 5;
   doc.setDrawColor(168, 85, 247);
   doc.setLineWidth(0.6);
-  doc.roundedRect(50, 115, W - 100, 60, 4, 4, "S");
+  doc.roundedRect(boxX, 115, boxW, 60, 4, 4, "S");
 
   doc.setTextColor(140);
   doc.setFontSize(10);
-  doc.text("INTERVALO DE KM", 60, 128);
-  doc.text("SENTIDO", 60, 148);
-  doc.text("PASSO", 160, 128);
-  doc.text("DATA", 160, 148);
+  doc.text("INTERVALO DE KM", col1X, 128);
+  doc.text("SENTIDO", col1X, 148);
+  doc.text("PASSO", col2X, 128);
+  doc.text("DATA", col2X, 148);
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
-  doc.text(`km ${formatKm(kmMin)} → km ${formatKm(kmMax)}`, 60, 138);
-  doc.text(meta.direction === "asc" ? "Crescente (+)" : "Decrescente (-)", 60, 158);
-  doc.text(`${meta.step} km`, 160, 138);
-  doc.text(dateStr, 160, 158);
+  doc.text(`km ${formatKm(kmMin)} → km ${formatKm(kmMax)}`, col1X, 138);
+  doc.text(meta.direction === "asc" ? "Crescente (+)" : "Decrescente (-)", col1X, 158);
+  doc.text(`${meta.step} km`, col2X, 138);
+  doc.text(dateStr, col2X, 158);
 
   doc.setTextColor(120);
   doc.setFontSize(11);
