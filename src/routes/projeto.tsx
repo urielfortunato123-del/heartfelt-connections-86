@@ -289,7 +289,7 @@ function ProjetoPage() {
       const km = nearestKm(polyline, cum, latlng);
       const absKm = meta.direction === "asc" ? meta.startKm + km : meta.startKm - km;
       const id = `m-${Date.now()}`;
-      setManuals((arr) => [...arr, { id, km: absKm, lat: latlng.lat, lng: latlng.lng, label: "ponto" }]);
+      commitManuals((arr) => [...arr, { id, km: absKm, lat: latlng.lat, lng: latlng.lng, label: "ponto" }]);
     }
   }
 
