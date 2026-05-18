@@ -304,6 +304,24 @@ export const DEFAULT_BOTH_LAYOUT: BothLayout = {
   marginX: 0,
 };
 
+export type GridLayout = {
+  cols: number;
+  rows: number;
+  marginX: number;
+  marginTop: number;
+  marginBottom: number;
+  gap: number;
+};
+
+export const DEFAULT_GRID_LAYOUT: GridLayout = {
+  cols: 3,
+  rows: 4,
+  marginX: 8,
+  marginTop: 22,
+  marginBottom: 10,
+  gap: 4,
+};
+
 export function exportPdfPlacas(
   meta: ProjectMeta,
   rows: Row[],
@@ -311,6 +329,7 @@ export function exportPdfPlacas(
   kmFormat: KmLabelFormat = "decimal3",
   bothLayout: BothLayout = DEFAULT_BOTH_LAYOUT,
   outputMode: "save" | "blob" = "save",
+  gridLayout: GridLayout = DEFAULT_GRID_LAYOUT,
 ): Blob | void {
 
 
@@ -397,13 +416,13 @@ export function exportPdfPlacas(
 
   // ====== GRID: várias placas por página ======
   if (mode === "grid") {
-    const cols = 3;
-    const rowsPerPage = 4;
+    const cols = Math.max(1, Math.floor(gridLayout.cols));
+    const rowsPerPage = Math.max(1, Math.floor(gridLayout.rows));
     const perPage = cols * rowsPerPage;
-    const marginX = 8;
-    const marginTop = 22;
-    const marginBottom = 10;
-    const gap = 4;
+    const marginX = gridLayout.marginX;
+    const marginTop = gridLayout.marginTop;
+    const marginBottom = gridLayout.marginBottom;
+    const gap = gridLayout.gap;
 
     const plateW = (W - marginX * 2 - gap * (cols - 1)) / cols;
     const plateH = (H - marginTop - marginBottom - gap * (rowsPerPage - 1)) / rowsPerPage;

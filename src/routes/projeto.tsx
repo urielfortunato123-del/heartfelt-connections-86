@@ -22,6 +22,7 @@ import {
 } from "@/lib/projeto/geo";
 import {
   DEFAULT_BOTH_LAYOUT,
+  DEFAULT_GRID_LAYOUT,
   exportCsv,
   exportExcel,
   exportPdfPlacas,
@@ -30,6 +31,7 @@ import {
   exportPlacasLadosExcel,
   importSpreadsheet,
   type BothLayout,
+  type GridLayout,
   type KmLabelFormat,
   type ProjectMeta,
 } from "@/lib/projeto/export";
@@ -103,6 +105,7 @@ function ProjetoPage() {
   const [loading, setLoading] = useState(false);
   const [kmFormat, setKmFormat] = useState<KmLabelFormat>("decimal3");
   const [bothLayout, setBothLayout] = useState<BothLayout>(DEFAULT_BOTH_LAYOUT);
+  const [gridLayout, setGridLayout] = useState<GridLayout>(DEFAULT_GRID_LAYOUT);
   const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
   const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
@@ -458,7 +461,7 @@ function ProjetoPage() {
               size="sm"
               variant="secondary"
               onClick={() => {
-                const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob") as Blob | undefined;
+                const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob", gridLayout) as Blob | undefined;
                 if (blob) {
                   setPreviewBlob(blob);
                   setPreviewOpen(true);
@@ -603,6 +606,49 @@ function ProjetoPage() {
                 variant="outline"
                 className="w-full"
                 onClick={() => setBothLayout(DEFAULT_BOTH_LAYOUT)}
+              >
+                Restaurar padrão
+              </Button>
+            </div>
+          </details>
+
+          <details className="rounded border border-white/10 bg-black/30 p-3 text-xs">
+            <summary className="cursor-pointer font-semibold uppercase tracking-wider text-white/60">
+              Layout PDF placas (grid)
+            </summary>
+            <div className="mt-3 space-y-2">
+              {([
+                ["cols", "Colunas", 1, 6, 1],
+                ["rows", "Linhas", 1, 8, 1],
+                ["marginX", "Margem lateral (mm)", 0, 40, 1],
+                ["marginTop", "Margem superior (mm)", 0, 60, 1],
+                ["marginBottom", "Margem inferior (mm)", 0, 40, 1],
+                ["gap", "Espaçamento entre placas (mm)", 0, 30, 1],
+              ] as const).map(([key, label, min, max, step]) => (
+                <div key={key} className="space-y-1">
+                  <Label className="text-[11px] text-white/70">
+                    {label}: <span className="text-cyan-300">{gridLayout[key]}</span>
+                  </Label>
+                  <Input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={gridLayout[key]}
+                    onChange={(e) =>
+                      setGridLayout((l) => ({ ...l, [key]: Number(e.target.value) }))
+                    }
+                  />
+                </div>
+              ))}
+              <p className="text-[10px] text-white/40">
+                {gridLayout.cols * gridLayout.rows} placa(s) por página
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => setGridLayout(DEFAULT_GRID_LAYOUT)}
               >
                 Restaurar padrão
               </Button>
