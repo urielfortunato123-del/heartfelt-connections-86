@@ -210,36 +210,28 @@ function Index() {
     setKmState(Number.isFinite(next) ? next : 0);
   }, []);
 
-  // Sync URL ?km= — debounced para evitar replaceState a cada tick do slider
-  // (em alguns hosts/iframes isso provoca scroll-to-top)
-  useEffect(() => {
+  // Sincroniza ?km= APENAS quando explicitamente "commitado"
+  // (onPointerUp/onKeyUp do slider, onBlur do input, clique em preset/history).
+  // Evita replaceState a cada tick durante o arraste — que causava scroll/jank.
+  const commitUrl = useCallback((value: number) => {
     if (typeof window === "undefined") return;
-    const t = window.setTimeout(() => {
-      const url = new URL(window.location.href);
-      if (km && Number.isFinite(km)) {
-        url.searchParams.set("km", String(km));
-      } else {
-        url.searchParams.delete("km");
-      }
-      if (url.toString() !== window.location.href) {
-        // Preserva a posição de scroll: alguns hosts/iframes disparam
-        // scroll-to-top após replaceState. Capturamos antes e restauramos
-        // em seguida (incluindo um rAF para vencer qualquer scroll-restore).
-        const x = window.scrollX;
-        const y = window.scrollY;
-        window.history.replaceState(null, "", url.toString());
-        if (window.scrollX !== x || window.scrollY !== y) {
-          window.scrollTo(x, y);
-        }
-        requestAnimationFrame(() => {
-          if (window.scrollX !== x || window.scrollY !== y) {
-            window.scrollTo(x, y);
-          }
-        });
-      }
-    }, 400);
-    return () => window.clearTimeout(t);
-  }, [km]);
+    const url = new URL(window.location.href);
+    if (Number.isFinite(value) && value > 0) {
+      url.searchParams.set("km", String(value));
+    } else {
+      url.searchParams.delete("km");
+    }
+    if (url.toString() === window.location.href) return;
+    const x = window.scrollX;
+    const y = window.scrollY;
+    window.history.replaceState(null, "", url.toString());
+    if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y);
+    requestAnimationFrame(() => {
+      if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y);
+    });
+  }, []);
+
+
 
 
   // Debounced history push
@@ -451,6 +443,7 @@ function Index() {
                   aria-label="Distance in kilometers"
                   value={Number.isFinite(km) ? Number(km.toFixed(3)) : ""}
                   onChange={(e) => setKm(parseFloat(e.target.value))}
+                  onBlur={() => commitUrl(km)}
                   className="w-full rounded-md bg-transparent text-5xl font-light tracking-tight text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:text-6xl"
                   placeholder="0"
                 />
@@ -487,6 +480,11 @@ function Index() {
                         const k = parseInt(e.target.value, 10) || 0;
                         setKm(Math.round((k + meters / 1000) * 1000) / 1000);
                       }}
+                      onPointerUp={() => commitUrl(km)}
+                      onKeyUp={(e) => {
+                        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Home","End","PageUp","PageDown"].includes(e.key))
+                          commitUrl(km);
+                      }}
                       className="mt-6 w-full rounded-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                     />
                     <div className="mt-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
@@ -512,6 +510,7 @@ function Index() {
                                 : wholeKm + m / 1000;
                             setKm(Math.round(nextKm * 1000) / 1000);
                           }}
+                          onBlur={() => commitUrl(km)}
                           className="w-16 rounded bg-black/40 px-2 py-1 text-right font-mono text-xs tabular-nums text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
                         />
                         <span className="text-white/40">m</span>
@@ -536,6 +535,11 @@ function Index() {
                           m >= 1000 ? Math.min(wholeKm + 1, MAX_RANGE) : wholeKm + m / 1000;
                         setKm(Math.round(nextKm * 1000) / 1000);
                       }}
+                      onPointerUp={() => commitUrl(km)}
+                      onKeyUp={(e) => {
+                        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Home","End","PageUp","PageDown"].includes(e.key))
+                          commitUrl(km);
+                      }}
                       className="mt-2 w-full rounded-full accent-fuchsia-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
                       style={{ accentColor: "#d946ef" }}
                     />
@@ -554,7 +558,7 @@ function Index() {
                     <motion.button
                       key={preset}
                       type="button"
-                      onClick={() => setKm(preset)}
+                      onClick={() => { setKm(preset); commitUrl(preset); }}
                       aria-pressed={active}
                       aria-label={`Set distance to ${preset} kilometers (press ${i + 1})`}
                       whileHover={{ scale: 1.05 }}
@@ -746,7 +750,7 @@ function Index() {
                       >
                         <button
                           type="button"
-                          onClick={() => setKm(h.km)}
+                          onClick={() => { setKm(h.km); commitUrl(h.km); }}
                           className="group flex w-full items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-left transition-colors hover:border-cyan-400/40 hover:bg-cyan-400/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                         >
                           <span className="font-mono text-sm text-white">
