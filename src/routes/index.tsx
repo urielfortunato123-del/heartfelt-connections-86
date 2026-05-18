@@ -442,24 +442,66 @@ function Index() {
                 </span>
               </div>
 
-              <label htmlFor="km-slider" className="sr-only">
-                Adjust kilometers with slider, range 0 to {MAX_RANGE}
-              </label>
-              <input
-                id="km-slider"
-                type="range"
-                min={0}
-                max={MAX_RANGE}
-                step={1}
-                aria-label="Kilometers slider"
-                aria-valuemin={0}
-                aria-valuemax={MAX_RANGE}
-                aria-valuenow={Number.isFinite(km) ? Math.min(km, MAX_RANGE) : 0}
-                aria-valuetext={`${Number.isFinite(km) ? km : 0} kilometers`}
-                value={Number.isFinite(km) ? Math.min(km, MAX_RANGE) : 0}
-                onChange={(e) => setKm(parseFloat(e.target.value))}
-                className="mt-6 w-full rounded-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-              />
+              {(() => {
+                const safeKm = Number.isFinite(km) ? Math.max(0, Math.min(km, MAX_RANGE)) : 0;
+                const wholeKm = Math.floor(safeKm);
+                const meters = Math.round((safeKm - wholeKm) * 1000);
+                return (
+                  <>
+                    <label htmlFor="km-slider" className="sr-only">
+                      Ajustar quilômetros, faixa 0 a {MAX_RANGE}
+                    </label>
+                    <input
+                      id="km-slider"
+                      type="range"
+                      min={0}
+                      max={MAX_RANGE}
+                      step={1}
+                      aria-label="Quilômetros"
+                      aria-valuemin={0}
+                      aria-valuemax={MAX_RANGE}
+                      aria-valuenow={wholeKm}
+                      aria-valuetext={`${wholeKm} quilômetros`}
+                      value={wholeKm}
+                      onChange={(e) => {
+                        const k = parseInt(e.target.value, 10) || 0;
+                        setKm(k + meters / 1000);
+                      }}
+                      className="mt-6 w-full rounded-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+                    />
+                    <div className="mt-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
+                      <label htmlFor="m-slider" className="text-fuchsia-300">
+                        + METROS · PRECISÃO FINA
+                      </label>
+                      <span className="text-white">
+                        {meters.toString().padStart(4, "0")} m
+                      </span>
+                    </div>
+                    <input
+                      id="m-slider"
+                      type="range"
+                      min={0}
+                      max={1000}
+                      step={1}
+                      aria-label="Metros adicionais (0 a 1000)"
+                      aria-valuemin={0}
+                      aria-valuemax={1000}
+                      aria-valuenow={meters}
+                      aria-valuetext={`${meters} metros`}
+                      value={meters}
+                      onChange={(e) => {
+                        const m = parseInt(e.target.value, 10) || 0;
+                        // 1000 m rola para o próximo km automaticamente
+                        const nextKm =
+                          m >= 1000 ? Math.min(wholeKm + 1, MAX_RANGE) : wholeKm + m / 1000;
+                        setKm(nextKm);
+                      }}
+                      className="mt-2 w-full rounded-full accent-fuchsia-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
+                      style={{ accentColor: "#d946ef" }}
+                    />
+                  </>
+                );
+              })()}
 
               <div
                 role="group"
