@@ -6,12 +6,15 @@ import { formatNumber } from "@/lib/converters/distance";
 type Props = {
   value: number;
   className?: string;
+  /** Custom formatter; defaults to formatNumber. */
+  format?: (n: number) => string;
 };
 
 /** Smoothly tweens between numeric values like a digital odometer. */
-export function AnimatedNumber({ value, className }: Props) {
+export function AnimatedNumber({ value, className, format }: Props) {
   const mv = useMotionValue(value);
-  const display = useTransform(mv, (v) => formatNumber(v));
+  const fmt = format ?? formatNumber;
+  const display = useTransform(mv, (v) => fmt(v));
   const last = useRef(value);
 
   useEffect(() => {
@@ -25,3 +28,4 @@ export function AnimatedNumber({ value, className }: Props) {
 
   return <motion.span className={className}>{display}</motion.span>;
 }
+
