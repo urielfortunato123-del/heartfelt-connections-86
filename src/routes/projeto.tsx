@@ -325,8 +325,28 @@ function ProjetoPage() {
                 manualPoints={manuals}
                 mode={mode}
                 onClick={handleMapClick}
+                onUpdatePoint={(id, patch) =>
+                  setManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+                }
+                onRemovePoint={(id) => setManuals((arr) => arr.filter((x) => x.id !== id))}
+                onMovePoint={(id, ll) => {
+                  // recalcula km automaticamente quando arrasta sobre a rota
+                  let km: number | undefined;
+                  if (polyline.length >= 2) {
+                    const k = nearestKm(polyline, cum, ll);
+                    km = meta.direction === "asc" ? meta.startKm + k : meta.startKm - k;
+                  }
+                  setManuals((arr) =>
+                    arr.map((x) =>
+                      x.id === id
+                        ? { ...x, lat: ll.lat, lng: ll.lng, ...(km !== undefined ? { km } : {}) }
+                        : x,
+                    ),
+                  );
+                }}
               />
             </Suspense>
+
           ) : (
             <div className="h-[480px] rounded-lg border border-white/10 bg-white/5" />
           )}
