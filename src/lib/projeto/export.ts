@@ -340,6 +340,8 @@ export function exportPdfPlacas(
   gridLayout: GridLayout = DEFAULT_GRID_LAYOUT,
   pageFormat: PageFormat = "a4",
   pageOrientation: PageOrientation = "landscape",
+  showHeader: boolean = true,
+  showPageNumber: boolean = true,
 ): Blob | void {
 
 
