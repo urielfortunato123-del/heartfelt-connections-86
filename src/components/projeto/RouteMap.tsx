@@ -61,7 +61,11 @@ export default function RouteMap({
   manualPoints,
   mode,
   onClick,
+  onUpdatePoint,
+  onRemovePoint,
+  onMovePoint,
 }: Props) {
+
   const mapRef = useRef<L.Map | null>(null);
   const center = useMemo<[number, number]>(() => {
     if (start) return [start.lat, start.lng];
