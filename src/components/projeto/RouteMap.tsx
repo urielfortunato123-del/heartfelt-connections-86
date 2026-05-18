@@ -149,6 +149,7 @@ export default function RouteMap({
                       dragend: (e) => {
                         const ll = (e.target as L.Marker).getLatLng();
                         onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                        onMovePointEnd?.(p.id);
                       },
                     }
                   : undefined
