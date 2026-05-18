@@ -105,6 +105,16 @@ function ProjetoPage() {
   const [bothLayout, setBothLayout] = useState<BothLayout>(DEFAULT_BOTH_LAYOUT);
   const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
   const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const openGridPreview = useCallback(() => {
+    const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob") as Blob | undefined;
+    if (blob) {
+      setPreviewBlob(blob);
+      setPreviewOpen(true);
+    }
+  }, [meta, kmFormat, bothLayout]); // rows added below via ref-safe pattern not needed; recompute each click is fine
 
   // ---------- Histórico (undo/redo) dos pontos manuais ----------
   const manualsRef = useRef<Manual[]>([]);
