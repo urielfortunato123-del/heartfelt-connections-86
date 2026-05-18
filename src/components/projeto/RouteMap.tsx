@@ -127,29 +127,56 @@ export default function RouteMap({
           </CircleMarker>
         ))}
 
-        {manualPoints.map((p) => (
-          <Marker
-            key={p.id}
-            position={[p.lat, p.lng]}
-            draggable={Boolean(onMovePoint)}
-            eventHandlers={
-              onMovePoint
-                ? {
-                    drag: (e) => {
-                      const ll = (e.target as L.Marker).getLatLng();
-                      onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
-                    },
-                    dragend: (e) => {
-                      const ll = (e.target as L.Marker).getLatLng();
-                      onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
-                    },
-                  }
-                : undefined
-            }
-          >
-            <Tooltip direction="top" offset={[0, -30]}>
-              {p.label || "ponto"} (~km {p.km.toFixed(3)})
-            </Tooltip>
+        {manualPoints.map((p) => {
+          let markerRef: L.Marker | null = null;
+          return (
+            <Marker
+              key={p.id}
+              position={[p.lat, p.lng]}
+              draggable={Boolean(onMovePoint)}
+              ref={(m) => {
+                markerRef = m as unknown as L.Marker | null;
+              }}
+              eventHandlers={
+                onMovePoint
+                  ? {
+                      drag: (e) => {
+                        const ll = (e.target as L.Marker).getLatLng();
+                        onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                      },
+                      dragend: (e) => {
+                        const ll = (e.target as L.Marker).getLatLng();
+                        onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                      },
+                    }
+                  : undefined
+              }
+            >
+              <Tooltip direction="top" offset={[0, -30]} permanent interactive opacity={0.95}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                  <span>
+                    {p.label || "ponto"} (~km {p.km.toFixed(3)})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markerRef?.openPopup();
+                    }}
+                    style={{
+                      background: "#0ea5e9",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 4,
+                      padding: "2px 6px",
+                      fontSize: 11,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Editar
+                  </button>
+                </div>
+              </Tooltip>
             <Popup>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 200 }}>
                 <label style={{ fontSize: 11, color: "#475569" }}>Descrição</label>
