@@ -501,7 +501,7 @@ function Index() {
                         // 1000 m rola para o próximo km automaticamente
                         const nextKm =
                           m >= 1000 ? Math.min(wholeKm + 1, MAX_RANGE) : wholeKm + m / 1000;
-                        setKm(nextKm);
+                        setKm(Math.round(nextKm * 1000) / 1000);
                       }}
                       className="mt-2 w-full rounded-full accent-fuchsia-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
                       style={{ accentColor: "#d946ef" }}
