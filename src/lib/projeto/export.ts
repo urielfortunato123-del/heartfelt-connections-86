@@ -304,6 +304,24 @@ export const DEFAULT_BOTH_LAYOUT: BothLayout = {
   marginX: 0,
 };
 
+export type GridLayout = {
+  cols: number;
+  rows: number;
+  marginX: number;
+  marginTop: number;
+  marginBottom: number;
+  gap: number;
+};
+
+export const DEFAULT_GRID_LAYOUT: GridLayout = {
+  cols: 3,
+  rows: 4,
+  marginX: 8,
+  marginTop: 22,
+  marginBottom: 10,
+  gap: 4,
+};
+
 export function exportPdfPlacas(
   meta: ProjectMeta,
   rows: Row[],
@@ -311,6 +329,7 @@ export function exportPdfPlacas(
   kmFormat: KmLabelFormat = "decimal3",
   bothLayout: BothLayout = DEFAULT_BOTH_LAYOUT,
   outputMode: "save" | "blob" = "save",
+  gridLayout: GridLayout = DEFAULT_GRID_LAYOUT,
 ): Blob | void {
 
 
