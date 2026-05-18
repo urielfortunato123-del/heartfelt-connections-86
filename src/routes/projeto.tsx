@@ -761,7 +761,7 @@ function ProjetoPage() {
                           onChange={(e) => {
                             const v = e.target.value;
                             if (isManual && r.id) {
-                              setManuals((arr) => arr.map((x) => (x.id === r.id ? { ...x, label: v } : x)));
+                              commitManuals((arr) => arr.map((x) => (x.id === r.id ? { ...x, label: v } : x)));
                             } else {
                               setDescriptions((d) => ({ ...d, [`km-${r.km}`]: v }));
                             }
