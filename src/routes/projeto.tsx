@@ -110,6 +110,8 @@ function ProjetoPage() {
   const [gridLayout, setGridLayout] = useState<GridLayout>(DEFAULT_GRID_LAYOUT);
   const [pageFormat, setPageFormat] = useState<PageFormat>("a4");
   const [pageOrientation, setPageOrientation] = useState<PageOrientation>("landscape");
+  const [showHeader, setShowHeader] = useState(true);
+  const [showPageNumber, setShowPageNumber] = useState(true);
   const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
   const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
