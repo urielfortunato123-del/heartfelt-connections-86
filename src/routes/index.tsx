@@ -443,6 +443,7 @@ function Index() {
                   aria-label="Distance in kilometers"
                   value={Number.isFinite(km) ? Number(km.toFixed(3)) : ""}
                   onChange={(e) => setKm(parseFloat(e.target.value))}
+                  onBlur={() => commitUrl(km)}
                   className="w-full rounded-md bg-transparent text-5xl font-light tracking-tight text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:text-6xl"
                   placeholder="0"
                 />
