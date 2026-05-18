@@ -41,6 +41,7 @@ type Props = {
   onUpdatePoint?: (id: string, patch: Partial<Pick<ManualPoint, "km" | "label">>) => void;
   onRemovePoint?: (id: string) => void;
   onMovePoint?: (id: string, latlng: LatLng) => void;
+  onMovePointEnd?: (id: string) => void;
 };
 
 
