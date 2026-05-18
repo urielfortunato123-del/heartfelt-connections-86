@@ -467,7 +467,7 @@ function ProjetoPage() {
               size="sm"
               variant="secondary"
               onClick={() => {
-                const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob", gridLayout, pageFormat, pageOrientation) as Blob | undefined;
+                const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob", gridLayout, pageFormat, pageOrientation, showHeader, showPageNumber) as Blob | undefined;
                 if (blob) {
                   setPreviewBlob(blob);
                   setPreviewOpen(true);
