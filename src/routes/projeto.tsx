@@ -532,19 +532,36 @@ function ProjetoPage() {
                 }
                 onRemovePoint={(id) => setManuals((arr) => arr.filter((x) => x.id !== id))}
                 onMovePoint={(id, ll) => {
-                  // recalcula km automaticamente quando arrasta sobre a rota
-                  let km: number | undefined;
-                  if (polyline.length >= 2) {
-                    const k = nearestKm(polyline, cum, ll);
-                    km = meta.direction === "asc" ? meta.startKm + k : meta.startKm - k;
-                  }
+                  // Recalcula km a cada movimento, ancorando o pino ao traçado.
+                  // - Sem rota: aceita lat/lng livre.
+                  // - Com rota: snap ao ponto mais próximo da polyline e km
+                  //   computado a partir do início, respeitando asc/desc.
                   setManuals((arr) =>
-                    arr.map((x) =>
-                      x.id === id
-                        ? { ...x, lat: ll.lat, lng: ll.lng, ...(km !== undefined ? { km } : {}) }
-                        : x,
-                    ),
+                    arr.map((x) => {
+                      if (x.id !== id) return x;
+                      if (polyline.length < 2) {
+                        return { ...x, lat: ll.lat, lng: ll.lng };
+                      }
+                      const snap = nearestOnRoute(polyline, cum, ll);
+                      const km =
+                        meta.direction === "asc"
+                          ? meta.startKm + snap.km
+                          : meta.startKm - snap.km;
+                      return { ...x, lat: snap.lat, lng: snap.lng, km };
+                    }),
                   );
+                  // Limpa qualquer erro de km pendente — o valor agora veio da rota.
+                  setKmErrors((e) => {
+                    if (!(id in e)) return e;
+                    const { [id]: _, ...rest } = e;
+                    return rest;
+                  });
+                  setKmDrafts((d) => {
+                    if (!(id in d)) return d;
+                    const { [id]: _, ...rest } = d;
+                    return rest;
+                  });
+                }}
                 }}
               />
             </Suspense>
