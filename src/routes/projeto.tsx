@@ -22,6 +22,7 @@ import {
 } from "@/lib/projeto/geo";
 import {
   DEFAULT_BOTH_LAYOUT,
+  DEFAULT_GRID_LAYOUT,
   exportCsv,
   exportExcel,
   exportPdfPlacas,
@@ -30,6 +31,7 @@ import {
   exportPlacasLadosExcel,
   importSpreadsheet,
   type BothLayout,
+  type GridLayout,
   type KmLabelFormat,
   type ProjectMeta,
 } from "@/lib/projeto/export";
