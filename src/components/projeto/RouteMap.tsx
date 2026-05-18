@@ -135,6 +135,10 @@ export default function RouteMap({
             eventHandlers={
               onMovePoint
                 ? {
+                    drag: (e) => {
+                      const ll = (e.target as L.Marker).getLatLng();
+                      onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                    },
                     dragend: (e) => {
                       const ll = (e.target as L.Marker).getLatLng();
                       onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });

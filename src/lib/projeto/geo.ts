@@ -97,7 +97,20 @@ export function nearestKm(
   cum: number[],
   pt: LL,
 ): number {
-  if (poly.length === 0) return 0;
+  return nearestOnRoute(poly, cum, pt).km;
+}
+
+/**
+ * Para uma lat/lng arbitrária, devolve o ponto da polyline mais próximo,
+ * com o km cumulativo desse ponto. Usado para "snap" do pino ao traçado
+ * durante o arraste, garantindo que o km seja sempre coerente com a rota.
+ */
+export function nearestOnRoute(
+  poly: [number, number][],
+  cum: number[],
+  pt: LL,
+): { km: number; lat: number; lng: number; index: number } {
+  if (poly.length === 0) return { km: 0, lat: pt.lat, lng: pt.lng, index: 0 };
   let bestIdx = 0;
   let bestDist = Infinity;
   for (let i = 0; i < poly.length; i++) {
@@ -107,5 +120,5 @@ export function nearestKm(
       bestIdx = i;
     }
   }
-  return cum[bestIdx];
+  return { km: cum[bestIdx], lat: poly[bestIdx][0], lng: poly[bestIdx][1], index: bestIdx };
 }
