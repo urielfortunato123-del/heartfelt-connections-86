@@ -360,7 +360,7 @@ function ProjetoPage() {
       });
 
       setDescriptions((d) => ({ ...d, ...descPatch }));
-      if (newManuals.length > 0) setManuals((arr) => [...arr, ...newManuals]);
+      if (newManuals.length > 0) commitManuals((arr) => [...arr, ...newManuals]);
 
       // Se não há rota, ajusta limites do projeto pelo que foi importado
       if (!hasRoute && Number.isFinite(minKm) && Number.isFinite(maxKm)) {
