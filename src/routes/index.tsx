@@ -290,7 +290,7 @@ function Index() {
                           }
                           setKm(v / u.factor);
                         }}
-                        className="mt-2 w-full truncate bg-transparent text-xl font-medium text-white outline-none placeholder:text-white/20"
+                        className="mt-2 w-full truncate rounded bg-transparent text-xl font-medium text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                         placeholder="0"
                       />
                     </motion.label>
