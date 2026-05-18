@@ -210,6 +210,9 @@ function Index() {
   );
   const km = totalMeters / 1000;
   const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory());
+  // Rascunho do input de metros — permite digitar vazio sem perder foco,
+  // com validação visual em tempo real (0–1000).
+  const [metersDraft, setMetersDraft] = useState<string | null>(null);
 
   // setKm aceita km (float) e converte para inteiro de metros — single source of truth.
   const setKm = useCallback((next: number) => {
