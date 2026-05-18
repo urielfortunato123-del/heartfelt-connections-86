@@ -559,37 +559,47 @@ function ProjetoPage() {
             <div className="rounded-lg border border-white/10 bg-slate-900/40 p-4">
               <h3 className="mb-2 text-sm font-semibold uppercase text-white/60">Pontos manuais</h3>
               <div className="space-y-2">
-                {manuals.map((m) => (
-                  <div key={m.id} className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      step="0.001"
-                      className="w-24 font-mono text-xs"
-                      value={m.km}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
-                        if (!Number.isFinite(v)) return;
-                        setManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, km: v } : x)));
-                      }}
-                      title="km do ponto"
-                    />
-                    <Input
-                      className="flex-1"
-                      value={m.label}
-                      onChange={(e) =>
-                        setManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, label: e.target.value } : x)))
-                      }
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setManuals((arr) => arr.filter((x) => x.id !== m.id))}
-                      title="Remover ponto manual"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                {manuals.map((m) => {
+                  const err = kmErrors[m.id];
+                  return (
+                    <div key={m.id} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          step="0.001"
+                          className={`w-24 font-mono text-xs ${err ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                          value={kmDrafts[m.id] ?? String(m.km)}
+                          onChange={(e) => commitManualKm(m.id, e.target.value)}
+                          onBlur={() => {
+                            if (!kmErrors[m.id]) setKmDrafts((d) => { const { [m.id]: _, ...rest } = d; return rest; });
+                          }}
+                          aria-invalid={!!err}
+                          title="km do ponto"
+                        />
+                        <Input
+                          className="flex-1"
+                          value={m.label}
+                          onChange={(e) =>
+                            setManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, label: e.target.value } : x)))
+                          }
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setManuals((arr) => arr.filter((x) => x.id !== m.id));
+                            setKmDrafts((d) => { const { [m.id]: _, ...rest } = d; return rest; });
+                            setKmErrors((e) => { const { [m.id]: _, ...rest } = e; return rest; });
+                          }}
+                          title="Remover ponto manual"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {err && <p className="text-xs text-red-400">{err}</p>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
