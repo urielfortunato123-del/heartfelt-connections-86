@@ -25,6 +25,8 @@ import {
   exportExcel,
   exportPdfPlacas,
   exportPdfTable,
+  exportPlacasLadosCsv,
+  exportPlacasLadosExcel,
   importSpreadsheet,
   type BothLayout,
   type KmLabelFormat,
