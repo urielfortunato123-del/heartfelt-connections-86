@@ -441,6 +441,9 @@ function Index() {
                 })}
               </div>
 
+              {/* DER · Estaca / Hectômetro (Padrão Brasileiro) */}
+              <DerPanel km={Number.isFinite(km) ? km : 0} setKm={setKm} />
+
               {/* Travel time strip */}
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/30 px-4 py-3">
                 <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.25em] text-white/40">
