@@ -203,12 +203,18 @@ function Index() {
   const search = useSearch({ from: "/" });
   const initial = Number.isFinite(search.km) && search.km! > 0 ? search.km! : 100;
 
-  const [km, setKmState] = useState<number>(initial);
+  // Fonte única da verdade: total em metros (inteiro).
+  // Evita erro de ponto flutuante ao combinar km + metros.
+  const [totalMeters, setTotalMeters] = useState<number>(
+    Math.max(0, Math.round((Number.isFinite(initial) ? initial : 0) * 1000)),
+  );
+  const km = totalMeters / 1000;
   const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory());
 
-  // Wrapper that also schedules a history push (debounced) and URL sync
+  // setKm aceita km (float) e converte para inteiro de metros — single source of truth.
   const setKm = useCallback((next: number) => {
-    setKmState(Number.isFinite(next) ? next : 0);
+    const m = Number.isFinite(next) ? Math.max(0, Math.round(next * 1000)) : 0;
+    setTotalMeters(Math.min(m, MAX_RANGE * 1000));
   }, []);
 
   // Sincroniza ?km= APENAS quando explicitamente "commitado"
