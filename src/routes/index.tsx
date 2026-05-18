@@ -618,7 +618,35 @@ function Index() {
                       }}
                       className="mt-6 w-full rounded-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                     />
-                    <div className="mt-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
+                    {(() => {
+                      // Preview ao vivo do total enquanto o usuário digita metros.
+                      const draftN =
+                        metersDraft === null || metersDraft === ""
+                          ? NaN
+                          : Number(metersDraft);
+                      const previewMeters =
+                        Number.isFinite(draftN) && draftN >= 0 && draftN <= 1000
+                          ? wholeKm * 1000 + Math.round(draftN)
+                          : totalMeters;
+                      const previewKm = previewMeters / 1000;
+                      return (
+                        <div
+                          className="mt-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em]"
+                          aria-live="polite"
+                        >
+                          <span className="text-white/40">
+                            TOTAL ={" "}
+                            <span className="text-cyan-300 tabular-nums">
+                              {formatKm(previewKm)} km
+                            </span>
+                            <span className="ml-2 text-white/30">
+                              ({formatNumber(previewMeters)} m)
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })()}
+                    <div className="mt-2 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
                       <label htmlFor="m-slider" className="text-fuchsia-300">
                         + METROS · PRECISÃO FINA
                       </label>
