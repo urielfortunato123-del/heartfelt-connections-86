@@ -416,13 +416,13 @@ export function exportPdfPlacas(
 
   // ====== GRID: várias placas por página ======
   if (mode === "grid") {
-    const cols = 3;
-    const rowsPerPage = 4;
+    const cols = Math.max(1, Math.floor(gridLayout.cols));
+    const rowsPerPage = Math.max(1, Math.floor(gridLayout.rows));
     const perPage = cols * rowsPerPage;
-    const marginX = 8;
-    const marginTop = 22;
-    const marginBottom = 10;
-    const gap = 4;
+    const marginX = gridLayout.marginX;
+    const marginTop = gridLayout.marginTop;
+    const marginBottom = gridLayout.marginBottom;
+    const gap = gridLayout.gap;
 
     const plateW = (W - marginX * 2 - gap * (cols - 1)) / cols;
     const plateH = (H - marginTop - marginBottom - gap * (rowsPerPage - 1)) / rowsPerPage;
