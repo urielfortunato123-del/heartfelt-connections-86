@@ -203,12 +203,18 @@ function Index() {
   const search = useSearch({ from: "/" });
   const initial = Number.isFinite(search.km) && search.km! > 0 ? search.km! : 100;
 
-  const [km, setKmState] = useState<number>(initial);
+  // Fonte única da verdade: total em metros (inteiro).
+  // Evita erro de ponto flutuante ao combinar km + metros.
+  const [totalMeters, setTotalMeters] = useState<number>(
+    Math.max(0, Math.round((Number.isFinite(initial) ? initial : 0) * 1000)),
+  );
+  const km = totalMeters / 1000;
   const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory());
 
-  // Wrapper that also schedules a history push (debounced) and URL sync
+  // setKm aceita km (float) e converte para inteiro de metros — single source of truth.
   const setKm = useCallback((next: number) => {
-    setKmState(Number.isFinite(next) ? next : 0);
+    const m = Number.isFinite(next) ? Math.max(0, Math.round(next * 1000)) : 0;
+    setTotalMeters(Math.min(m, MAX_RANGE * 1000));
   }, []);
 
   // Sincroniza ?km= APENAS quando explicitamente "commitado"
@@ -457,9 +463,9 @@ function Index() {
               </div>
 
               {(() => {
-                const safeKm = Number.isFinite(km) ? Math.max(0, Math.min(km, MAX_RANGE)) : 0;
-                const wholeKm = Math.floor(safeKm);
-                const meters = Math.round((safeKm - wholeKm) * 1000);
+                const safeTotal = Math.max(0, Math.min(totalMeters, MAX_RANGE * 1000));
+                const wholeKm = Math.floor(safeTotal / 1000);
+                const meters = safeTotal % 1000;
                 return (
                   <>
                     <label htmlFor="km-slider" className="sr-only">
@@ -479,7 +485,8 @@ function Index() {
                       value={wholeKm}
                       onChange={(e) => {
                         const k = parseInt(e.target.value, 10) || 0;
-                        setKm(Math.round((k + meters / 1000) * 1000) / 1000);
+                        // Aritmética inteira: preserva os metros atuais sem erro de ponto flutuante.
+                        setTotalMeters(Math.min(MAX_RANGE * 1000, k * 1000 + meters));
                       }}
                       onPointerUp={() => commitUrl(km)}
                       onKeyUp={(e) => {
@@ -505,11 +512,9 @@ function Index() {
                           onChange={(e) => {
                             const raw = parseInt(e.target.value, 10);
                             const m = Number.isFinite(raw) ? Math.max(0, Math.min(1000, raw)) : 0;
-                            const nextKm =
-                              m >= 1000
-                                ? Math.min(wholeKm + 1, MAX_RANGE)
-                                : wholeKm + m / 1000;
-                            setKm(Math.round(nextKm * 1000) / 1000);
+                            // 1000 m rola para o próximo km automaticamente.
+                            const next = m >= 1000 ? (wholeKm + 1) * 1000 : wholeKm * 1000 + m;
+                            setTotalMeters(Math.min(MAX_RANGE * 1000, next));
                           }}
                           onBlur={() => commitUrl(km)}
                           className="w-16 rounded bg-black/40 px-2 py-1 text-right font-mono text-xs tabular-nums text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
@@ -531,10 +536,8 @@ function Index() {
                       value={meters}
                       onChange={(e) => {
                         const m = parseInt(e.target.value, 10) || 0;
-                        // 1000 m rola para o próximo km automaticamente
-                        const nextKm =
-                          m >= 1000 ? Math.min(wholeKm + 1, MAX_RANGE) : wholeKm + m / 1000;
-                        setKm(Math.round(nextKm * 1000) / 1000);
+                        const next = m >= 1000 ? (wholeKm + 1) * 1000 : wholeKm * 1000 + m;
+                        setTotalMeters(Math.min(MAX_RANGE * 1000, next));
                       }}
                       onPointerUp={() => commitUrl(km)}
                       onKeyUp={(e) => {
