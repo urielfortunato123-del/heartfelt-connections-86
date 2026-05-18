@@ -101,6 +101,40 @@ function ProjetoPage() {
   const [loading, setLoading] = useState(false);
   const [kmFormat, setKmFormat] = useState<KmLabelFormat>("decimal3");
   const [bothLayout, setBothLayout] = useState<BothLayout>(DEFAULT_BOTH_LAYOUT);
+  const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
+  const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
+
+  const kmRange = useMemo(() => {
+    const lo = Math.min(meta.startKm, meta.endKm);
+    const hi = Math.max(meta.startKm, meta.endKm);
+    return { lo, hi };
+  }, [meta.startKm, meta.endKm]);
+
+  function validateKm(raw: string): { value?: number; error?: string } {
+    const s = raw.trim().replace(",", ".");
+    if (s === "" || s === "-") return { error: "Informe um valor numérico." };
+    const v = Number(s);
+    if (!Number.isFinite(v)) return { error: "Valor numérico inválido." };
+    const { lo, hi } = kmRange;
+    if (hi > lo && (v < lo - 1e-9 || v > hi + 1e-9)) {
+      return { error: `Fora do intervalo ${formatKm(lo)} – ${formatKm(hi)}.` };
+    }
+    return { value: v };
+  }
+
+  function commitManualKm(id: string, raw: string) {
+    setKmDrafts((d) => ({ ...d, [id]: raw }));
+    const { value, error } = validateKm(raw);
+    if (error || value === undefined) {
+      setKmErrors((e) => ({ ...e, [id]: error ?? "Valor inválido." }));
+      return;
+    }
+    setKmErrors((e) => {
+      const { [id]: _, ...rest } = e;
+      return rest;
+    });
+    setManuals((arr) => arr.map((x) => (x.id === id ? { ...x, km: value } : x)));
+  }
 
   // Restaurar do localStorage
   useEffect(() => {
