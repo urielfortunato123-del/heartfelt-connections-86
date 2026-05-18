@@ -25,6 +25,8 @@ import {
   exportExcel,
   exportPdfPlacas,
   exportPdfTable,
+  exportPlacasLadosCsv,
+  exportPlacasLadosExcel,
   importSpreadsheet,
   type BothLayout,
   type KmLabelFormat,
@@ -333,6 +335,12 @@ function ProjetoPage() {
             </Button>
             <Button size="sm" onClick={() => exportPdfPlacas(meta, rows, "both", kmFormat, bothLayout)} disabled={rows.length === 0}>
               <FileText className="mr-1 h-4 w-4" /> PDF placas (2 lados)
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => exportPlacasLadosExcel(meta, rows)} disabled={rows.length === 0}>
+              <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel km esq/dir
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => exportPlacasLadosCsv(meta, rows)} disabled={rows.length === 0}>
+              <FileSpreadsheet className="mr-1 h-4 w-4" /> CSV km esq/dir
             </Button>
 
           </div>
