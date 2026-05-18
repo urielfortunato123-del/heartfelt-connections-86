@@ -33,6 +33,8 @@ import {
   type BothLayout,
   type GridLayout,
   type KmLabelFormat,
+  type PageFormat,
+  type PageOrientation,
   type ProjectMeta,
 } from "@/lib/projeto/export";
 
