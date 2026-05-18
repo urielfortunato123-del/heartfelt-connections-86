@@ -755,7 +755,7 @@ function Index() {
                           className="group flex w-full items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-left transition-colors hover:border-cyan-400/40 hover:bg-cyan-400/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                         >
                           <span className="font-mono text-sm text-white">
-                            {formatNumber(h.km)}{" "}
+                            {formatKm(h.km)}{" "}
                             <span className="text-xs text-white/40">km</span>
                           </span>
                           <span className="font-mono text-[10px] tracking-[0.2em] text-white/30 group-hover:text-cyan-300">
