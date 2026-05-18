@@ -264,14 +264,18 @@ function ProjetoPage() {
 
 
   // Linhas finais para tabela/export
-  const rows = useMemo(() => {
-    const auto = kmMarkers.map((m) => ({
+  type UiRow = { km: number; descricao: string; kind: "auto" | "manual"; id?: string };
+  const rows = useMemo<UiRow[]>(() => {
+    const auto: UiRow[] = kmMarkers.map((m) => ({
       km: m.km,
       descricao: descriptions[`km-${m.km}`] ?? "",
+      kind: "auto",
     }));
-    const manualRows = manuals.map((m) => ({
+    const manualRows: UiRow[] = manuals.map((m) => ({
       km: m.km,
       descricao: m.label,
+      kind: "manual",
+      id: m.id,
     }));
     return [...auto, ...manualRows].sort((a, b) =>
       meta.direction === "asc" ? a.km - b.km : b.km - a.km,
@@ -523,7 +527,18 @@ function ProjetoPage() {
               <div className="space-y-2">
                 {manuals.map((m) => (
                   <div key={m.id} className="flex items-center gap-2">
-                    <span className="w-24 text-xs text-cyan-300">km {formatKm(m.km)}</span>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      className="w-24 font-mono text-xs"
+                      value={m.km}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        if (!Number.isFinite(v)) return;
+                        setManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, km: v } : x)));
+                      }}
+                      title="km do ponto"
+                    />
                     <Input
                       className="flex-1"
                       value={m.label}
@@ -535,6 +550,7 @@ function ProjetoPage() {
                       size="icon"
                       variant="ghost"
                       onClick={() => setManuals((arr) => arr.filter((x) => x.id !== m.id))}
+                      title="Remover ponto manual"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -557,21 +573,39 @@ function ProjetoPage() {
                     <th key={u.key} className="px-3 py-2 text-left">{u.suffix}</th>
                   ))}
                   <th className="px-3 py-2 text-left">Descrição</th>
+                  <th className="px-3 py-2 text-left w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-white/40">
+                    <td colSpan={9} className="px-3 py-8 text-center text-white/40">
                       Marque o início e o fim no mapa para gerar o estaqueamento.
                     </td>
                   </tr>
                 )}
                 {rows.map((r, i) => {
                   const der = kmToDer(Math.abs(r.km));
+                  const isManual = r.kind === "manual";
                   return (
-                    <tr key={i} className="border-t border-white/5 hover:bg-white/5">
-                      <td className="px-3 py-2 font-mono">{formatKm(r.km)}</td>
+                    <tr key={i} className={`border-t border-white/5 hover:bg-white/5 ${isManual ? "bg-cyan-500/5" : ""}`}>
+                      <td className="px-3 py-2 font-mono">
+                        {isManual && r.id ? (
+                          <Input
+                            type="number"
+                            step="0.001"
+                            className="h-7 w-24 text-xs font-mono"
+                            value={r.km}
+                            onChange={(e) => {
+                              const v = Number(e.target.value);
+                              if (!Number.isFinite(v)) return;
+                              setManuals((arr) => arr.map((x) => (x.id === r.id ? { ...x, km: v } : x)));
+                            }}
+                          />
+                        ) : (
+                          formatKm(r.km)
+                        )}
+                      </td>
                       <td className="px-3 py-2 font-mono">{der.estacas}</td>
                       <td className="px-3 py-2 font-mono">{der.extra.toFixed(2)}</td>
                       <td className="px-3 py-2 font-mono">{kmToHectometros(Math.abs(r.km)).toFixed(2)}</td>
@@ -582,11 +616,29 @@ function ProjetoPage() {
                         <Input
                           className="h-7 text-xs"
                           value={r.descricao}
-                          onChange={(e) =>
-                            setDescriptions((d) => ({ ...d, [`km-${r.km}`]: e.target.value }))
-                          }
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (isManual && r.id) {
+                              setManuals((arr) => arr.map((x) => (x.id === r.id ? { ...x, label: v } : x)));
+                            } else {
+                              setDescriptions((d) => ({ ...d, [`km-${r.km}`]: v }));
+                            }
+                          }}
                           placeholder="ex.: ponte, placa A-1a…"
                         />
+                      </td>
+                      <td className="px-3 py-2">
+                        {isManual && r.id && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => setManuals((arr) => arr.filter((x) => x.id !== r.id))}
+                            title="Remover ponto manual"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   );
