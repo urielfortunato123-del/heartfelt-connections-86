@@ -329,7 +329,8 @@ function Index() {
     Math.max(0, Math.round((Number.isFinite(initial) ? initial : 0) * 1000)),
   );
   const km = totalMeters / 1000;
-  const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory());
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  useEffect(() => { setHistory(loadHistory()); }, []);
   // Rascunho do input de metros — permite digitar vazio sem perder foco,
   // com validação visual em tempo real (0–1000).
   const [metersDraft, setMetersDraft] = useState<string | null>(null);
