@@ -535,20 +535,20 @@ function Index() {
             KM/CONVERTER · PRO
           </span>
         </div>
-        <div className="hidden items-center gap-4 md:flex">
+        <div className="flex items-center gap-2 md:gap-4">
           <a
             href="/projeto"
-            className="rounded-full border border-purple-400/40 bg-purple-500/10 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-purple-200 transition-colors hover:border-purple-300 hover:text-white"
+            className="rounded-full border border-purple-400/40 bg-purple-500/10 px-3 py-1.5 font-mono text-[10px] tracking-[0.2em] text-purple-200 transition-colors hover:border-purple-300 hover:text-white md:px-4 md:tracking-[0.25em]"
           >
-            EDITOR DE PROJETO
+            EDITOR
           </a>
           <button
             onClick={shareLink}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-white/70 transition-colors hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+            className="hidden rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-white/70 transition-colors hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:inline-flex"
           >
             SHARE
           </button>
-          <span className="font-mono text-[10px] tracking-[0.3em] text-cyan-300">
+          <span className="hidden font-mono text-[10px] tracking-[0.3em] text-cyan-300 md:inline">
             // ONLINE
           </span>
         </div>
