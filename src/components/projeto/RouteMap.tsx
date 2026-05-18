@@ -128,13 +128,84 @@ export default function RouteMap({
         ))}
 
         {manualPoints.map((p) => (
-          <Marker key={p.id} position={[p.lat, p.lng]}>
-            <Tooltip permanent direction="top">
+          <Marker
+            key={p.id}
+            position={[p.lat, p.lng]}
+            draggable={Boolean(onMovePoint)}
+            eventHandlers={
+              onMovePoint
+                ? {
+                    dragend: (e) => {
+                      const ll = (e.target as L.Marker).getLatLng();
+                      onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                    },
+                  }
+                : undefined
+            }
+          >
+            <Tooltip direction="top" offset={[0, -30]}>
               {p.label || "ponto"} (~km {p.km.toFixed(3)})
             </Tooltip>
+            <Popup>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 200 }}>
+                <label style={{ fontSize: 11, color: "#475569" }}>Descrição</label>
+                <input
+                  defaultValue={p.label}
+                  onBlur={(e) => onUpdatePoint?.(p.id, { label: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                    padding: "4px 6px",
+                    fontSize: 13,
+                  }}
+                />
+                <label style={{ fontSize: 11, color: "#475569" }}>Km</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  defaultValue={Number(p.km.toFixed(3))}
+                  onBlur={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) onUpdatePoint?.(p.id, { km: v });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 4,
+                    padding: "4px 6px",
+                    fontSize: 13,
+                  }}
+                />
+                <div style={{ fontSize: 11, color: "#64748b" }}>
+                  Dica: arraste o pino para reposicionar.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRemovePoint?.(p.id)}
+                  style={{
+                    marginTop: 4,
+                    background: "#dc2626",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 4,
+                    padding: "6px 8px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Remover ponto
+                </button>
+              </div>
+            </Popup>
           </Marker>
         ))}
       </MapContainer>
     </div>
   );
 }
+
