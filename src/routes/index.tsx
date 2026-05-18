@@ -480,6 +480,11 @@ function Index() {
                         const k = parseInt(e.target.value, 10) || 0;
                         setKm(Math.round((k + meters / 1000) * 1000) / 1000);
                       }}
+                      onPointerUp={() => commitUrl(km)}
+                      onKeyUp={(e) => {
+                        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Home","End","PageUp","PageDown"].includes(e.key))
+                          commitUrl(km);
+                      }}
                       className="mt-6 w-full rounded-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                     />
                     <div className="mt-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
