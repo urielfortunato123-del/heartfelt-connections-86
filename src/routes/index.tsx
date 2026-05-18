@@ -210,17 +210,24 @@ function Index() {
     setKmState(Number.isFinite(next) ? next : 0);
   }, []);
 
-  // Sync URL ?km= (replace, no scroll jump)
+  // Sync URL ?km= — debounced para evitar replaceState a cada tick do slider
+  // (em alguns hosts/iframes isso provoca scroll-to-top)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    if (km && Number.isFinite(km)) {
-      url.searchParams.set("km", String(km));
-    } else {
-      url.searchParams.delete("km");
-    }
-    window.history.replaceState(null, "", url.toString());
+    const t = window.setTimeout(() => {
+      const url = new URL(window.location.href);
+      if (km && Number.isFinite(km)) {
+        url.searchParams.set("km", String(km));
+      } else {
+        url.searchParams.delete("km");
+      }
+      if (url.toString() !== window.location.href) {
+        window.history.replaceState(null, "", url.toString());
+      }
+    }, 400);
+    return () => window.clearTimeout(t);
   }, [km]);
+
 
   // Debounced history push
   useEffect(() => {
