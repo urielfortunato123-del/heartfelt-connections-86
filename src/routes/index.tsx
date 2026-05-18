@@ -11,6 +11,7 @@ import {
   DISTANCE_UNITS,
   derToKm,
   formatDer,
+  formatKm,
   formatNumber,
   kmToDer,
   kmToHectometros,
