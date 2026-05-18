@@ -621,6 +621,30 @@ function ProjetoPage() {
               Layout PDF placas (grid)
             </summary>
             <div className="mt-3 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-white/70">Formato</Label>
+                  <select
+                    value={pageFormat}
+                    onChange={(e) => setPageFormat(e.target.value as PageFormat)}
+                    className="h-8 w-full rounded-md border border-white/10 bg-slate-800 px-2 text-xs text-white"
+                  >
+                    <option value="a4">A4</option>
+                    <option value="a3">A3</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-white/70">Orientação</Label>
+                  <select
+                    value={pageOrientation}
+                    onChange={(e) => setPageOrientation(e.target.value as PageOrientation)}
+                    className="h-8 w-full rounded-md border border-white/10 bg-slate-800 px-2 text-xs text-white"
+                  >
+                    <option value="landscape">Paisagem</option>
+                    <option value="portrait">Retrato</option>
+                  </select>
+                </div>
+              </div>
               {([
                 ["cols", "Colunas", 1, 6, 1],
                 ["rows", "Linhas", 1, 8, 1],
