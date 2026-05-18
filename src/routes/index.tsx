@@ -472,7 +472,7 @@ function Index() {
                       value={wholeKm}
                       onChange={(e) => {
                         const k = parseInt(e.target.value, 10) || 0;
-                        setKm(k + meters / 1000);
+                        setKm(Math.round((k + meters / 1000) * 1000) / 1000);
                       }}
                       className="mt-6 w-full rounded-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                     />
