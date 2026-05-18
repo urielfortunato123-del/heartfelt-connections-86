@@ -21,18 +21,21 @@ export const DISTANCE_UNITS: DistanceUnit[] = [
   { key: "ly", label: "Light-Years", suffix: "ly", factor: 1.057e-16 },
 ];
 
+// Locale fixo para evitar mismatch de hidratação (SSR usa Node default, browser usa pt-BR).
+const NUM_LOCALE = "pt-BR";
+
 export function formatNumber(n: number): string {
   if (!Number.isFinite(n)) return "—";
   if (n === 0) return "0";
   const abs = Math.abs(n);
   if (abs < 0.0001 || abs >= 1e9) return n.toExponential(4);
-  return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  return n.toLocaleString(NUM_LOCALE, { maximumFractionDigits: 4 });
 }
 
 /** Formata km com exatamente 3 casas decimais (precisão de 1 metro). */
 export function formatKm(n: number): string {
   if (!Number.isFinite(n)) return "—";
-  return n.toLocaleString(undefined, {
+  return n.toLocaleString(NUM_LOCALE, {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   });
