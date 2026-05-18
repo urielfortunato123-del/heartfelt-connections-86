@@ -536,6 +536,12 @@ function Index() {
           </span>
         </div>
         <div className="hidden items-center gap-4 md:flex">
+          <a
+            href="/projeto"
+            className="rounded-full border border-purple-400/40 bg-purple-500/10 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-purple-200 transition-colors hover:border-purple-300 hover:text-white"
+          >
+            EDITOR DE PROJETO
+          </a>
           <button
             onClick={shareLink}
             className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-white/70 transition-colors hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
