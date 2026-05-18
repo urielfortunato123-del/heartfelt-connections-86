@@ -510,6 +510,7 @@ function Index() {
                                 : wholeKm + m / 1000;
                             setKm(Math.round(nextKm * 1000) / 1000);
                           }}
+                          onBlur={() => commitUrl(km)}
                           className="w-16 rounded bg-black/40 px-2 py-1 text-right font-mono text-xs tabular-nums text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
                         />
                         <span className="text-white/40">m</span>
