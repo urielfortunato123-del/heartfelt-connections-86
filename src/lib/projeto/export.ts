@@ -305,7 +305,7 @@ export function exportPdfPlacas(
             ? "↑ CRESCENTE"
             : "↓ DECRESCENTE",
         titleColor: meta.direction === "asc" ? [16, 185, 129] : [200, 60, 60],
-        kmLabel: `km ${formatKm(r.km)}`,
+        kmLabel: formatKmLabel(r.km, kmFormat),
         subline: `Est ${der.estacas}+${der.extra.toFixed(1)} · ${kmToHectometros(Math.abs(r.km)).toFixed(1)} hm`,
         descricao: r.descricao,
       });
@@ -364,7 +364,7 @@ export function exportPdfPlacas(
         h: plateH,
         title: "← LADO ESQUERDO · DECRESCENTE",
         titleColor: [200, 60, 60],
-        kmLabel: `km ${formatKm(leftKm)}`,
+        kmLabel: formatKmLabel(leftKm, kmFormat),
         subline,
         descricao: r.descricao,
       });
@@ -377,7 +377,7 @@ export function exportPdfPlacas(
         h: plateH,
         title: "LADO DIREITO · CRESCENTE →",
         titleColor: [16, 185, 129],
-        kmLabel: `km ${formatKm(r.km)}`,
+        kmLabel: formatKmLabel(r.km, kmFormat),
         subline,
         descricao: r.descricao,
       });
@@ -390,7 +390,7 @@ export function exportPdfPlacas(
         title: meta.direction === "asc" ? "↑ CRESCENTE" : "↓ DECRESCENTE",
         titleColor:
           meta.direction === "asc" ? [16, 185, 129] : [200, 60, 60],
-        kmLabel: `km ${formatKm(r.km)}`,
+        kmLabel: formatKmLabel(r.km, kmFormat),
         subline,
         descricao: r.descricao,
       });
