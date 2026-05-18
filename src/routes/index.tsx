@@ -46,6 +46,9 @@ function loadHistory(): HistoryEntry[] {
 }
 
 function Particles() {
+  // Só renderiza no client — evita mismatch de hidratação por Math.random no SSR.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const dots = useMemo(
     () =>
       Array.from({ length: 40 }).map(() => ({
@@ -56,6 +59,7 @@ function Particles() {
       })),
     [],
   );
+  if (!mounted) return null;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       {dots.map((p, i) => (
