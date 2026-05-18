@@ -94,6 +94,7 @@ function ProjetoPage() {
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<"start" | "end" | "manual">("start");
   const [loading, setLoading] = useState(false);
+  const [kmFormat, setKmFormat] = useState<KmLabelFormat>("decimal3");
 
   // Restaurar do localStorage
   useEffect(() => {
