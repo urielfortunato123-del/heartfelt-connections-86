@@ -20,14 +20,17 @@ import {
   type LL,
 } from "@/lib/projeto/geo";
 import {
+  DEFAULT_BOTH_LAYOUT,
   exportCsv,
   exportExcel,
   exportPdfPlacas,
   exportPdfTable,
   importSpreadsheet,
+  type BothLayout,
   type KmLabelFormat,
   type ProjectMeta,
 } from "@/lib/projeto/export";
+
 
 
 
