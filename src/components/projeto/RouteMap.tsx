@@ -6,9 +6,11 @@ import {
   Marker,
   Polyline,
   CircleMarker,
+  Popup,
   Tooltip,
   useMapEvents,
 } from "react-leaflet";
+
 
 // Fix de ícone padrão do Leaflet (caminhos quebrados via bundler)
 const defaultIcon = L.icon({
