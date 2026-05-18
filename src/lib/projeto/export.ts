@@ -322,6 +322,14 @@ export const DEFAULT_GRID_LAYOUT: GridLayout = {
   gap: 4,
 };
 
+export type PageFormat = "a4" | "a3";
+export type PageOrientation = "portrait" | "landscape";
+
+const PAGE_SIZES: Record<PageFormat, [number, number]> = {
+  a4: [210, 297],
+  a3: [297, 420],
+};
+
 export function exportPdfPlacas(
   meta: ProjectMeta,
   rows: Row[],
@@ -330,12 +338,15 @@ export function exportPdfPlacas(
   bothLayout: BothLayout = DEFAULT_BOTH_LAYOUT,
   outputMode: "save" | "blob" = "save",
   gridLayout: GridLayout = DEFAULT_GRID_LAYOUT,
+  pageFormat: PageFormat = "a4",
+  pageOrientation: PageOrientation = "landscape",
 ): Blob | void {
 
 
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  const W = 297;
-  const H = 210;
+  const doc = new jsPDF({ orientation: pageOrientation, unit: "mm", format: pageFormat });
+  const [shortSide, longSide] = PAGE_SIZES[pageFormat];
+  const W = pageOrientation === "landscape" ? longSide : shortSide;
+  const H = pageOrientation === "landscape" ? shortSide : longSide;
 
   // ====== CAPA ======
   const kmMin = Math.min(meta.startKm, meta.endKm);
