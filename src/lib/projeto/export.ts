@@ -166,6 +166,27 @@ export function exportPdfTable(meta: ProjectMeta, rows: Row[]) {
 
 type PlateSide = "single" | "both" | "grid";
 
+export type KmLabelFormat = "padded" | "integer" | "decimal1" | "decimal3";
+
+export function formatKmLabel(km: number, fmt: KmLabelFormat = "decimal3"): string {
+  const abs = Math.abs(km);
+  switch (fmt) {
+    case "padded": {
+      // km 012 — sempre 3 dígitos zero à esquerda, inteiro arredondado
+      const n = Math.round(abs);
+      return `km ${n.toString().padStart(3, "0")}`;
+    }
+    case "integer":
+      return `km ${Math.round(abs)}`;
+    case "decimal1":
+      return `km ${abs.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+    case "decimal3":
+    default:
+      return `km ${formatKm(abs)}`;
+  }
+}
+
+
 function drawPlate(
   doc: jsPDF,
   opts: {
