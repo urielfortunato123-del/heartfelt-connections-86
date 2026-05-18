@@ -103,11 +103,69 @@ export function exportPdfTable(meta: ProjectMeta, rows: Row[]) {
   doc.save(`${slug(meta.name)}-estaqueamento.pdf`);
 }
 
-/** PDF com uma "placa" por marcador de km (paisagem, 1 placa por página). */
-export function exportPdfPlacas(meta: ProjectMeta, rows: Row[]) {
+type PlateSide = "single" | "both";
+
+function drawPlate(
+  doc: jsPDF,
+  opts: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    title: string;
+    titleColor: [number, number, number];
+    kmLabel: string;
+    subline: string;
+    descricao?: string;
+  },
+) {
+  const { x, y, w, h, title, titleColor, kmLabel, subline, descricao } = opts;
+
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1.5);
+  doc.roundedRect(x, y, w, h, 5, 5, "FD");
+
+  // Faixa de título (sentido / lado)
+  doc.setFillColor(...titleColor);
+  doc.rect(x, y, w, 14, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(12);
+  doc.text(title, x + w / 2, y + 9.5, { align: "center" });
+
+  // Km grande
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(54);
+  doc.text(kmLabel, x + w / 2, y + h / 2 + 8, { align: "center" });
+
+  // Sub-linha (estaca/hm)
+  doc.setFontSize(11);
+  doc.text(subline, x + w / 2, y + h - 18, { align: "center" });
+
+  if (descricao) {
+    doc.setFontSize(10);
+    doc.setTextColor(80);
+    doc.text(descricao, x + w / 2, y + h - 8, { align: "center" });
+  }
+}
+
+/**
+ * PDF com placa(s) por marcador de km.
+ * - mode "single": 1 placa por página (respeitando o sentido do projeto).
+ * - mode "both":   2 placas por página, lado esquerdo (decrescente) e lado direito (crescente),
+ *                  cada uma mostrando o km correto para aquele lado da pista.
+ */
+export function exportPdfPlacas(
+  meta: ProjectMeta,
+  rows: Row[],
+  mode: PlateSide = "single",
+) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const W = 297;
   const H = 210;
+
+  // Para cálculo do km do lado oposto: espelho em torno de (startKm + endKm) / 2
+  const mirror = (km: number) => meta.startKm + meta.endKm - km;
 
   rows.forEach((r, idx) => {
     if (idx > 0) doc.addPage();
@@ -124,53 +182,65 @@ export function exportPdfPlacas(meta: ProjectMeta, rows: Row[]) {
     doc.setTextColor(200);
     doc.setFontSize(11);
     doc.text(
-      `Sentido: ${meta.direction === "asc" ? "Crescente (+km)" : "Decrescente (-km)"}`,
+      mode === "both"
+        ? "Placas dos dois lados da pista"
+        : `Sentido: ${meta.direction === "asc" ? "Crescente (+km)" : "Decrescente (-km)"}`,
       14,
       24,
     );
 
-    // PLACA grande (estilo rodoviário)
-    const plateX = 60;
-    const plateY = 50;
-    const plateW = 177;
-    const plateH = 110;
+    const der = kmToDer(Math.abs(r.km));
+    const subline = `Estaca ${der.estacas} + ${der.extra.toFixed(2)}   ·   ${kmToHectometros(
+      Math.abs(r.km),
+    ).toFixed(2)} hm`;
 
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(2);
-    doc.roundedRect(plateX, plateY, plateW, plateH, 6, 6, "FD");
+    if (mode === "both") {
+      const plateW = 130;
+      const plateH = 140;
+      const gap = 17;
+      const totalW = plateW * 2 + gap;
+      const startX = (W - totalW) / 2;
+      const plateY = 45;
 
-    // Faixa superior (sentido)
-    doc.setFillColor(meta.direction === "asc" ? 16 : 200, meta.direction === "asc" ? 185 : 60, meta.direction === "asc" ? 129 : 60);
-    doc.rect(plateX, plateY, plateW, 16, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(13);
-    doc.text(
-      meta.direction === "asc" ? "↑ CRESCENTE" : "↓ DECRESCENTE",
-      plateX + plateW / 2,
-      plateY + 11,
-      { align: "center" },
-    );
+      // Lado esquerdo da pista: sentido DECRESCENTE → km espelhado
+      const leftKm = mirror(r.km);
+      drawPlate(doc, {
+        x: startX,
+        y: plateY,
+        w: plateW,
+        h: plateH,
+        title: "← LADO ESQUERDO · DECRESCENTE",
+        titleColor: [200, 60, 60],
+        kmLabel: `km ${formatKm(leftKm)}`,
+        subline,
+        descricao: r.descricao,
+      });
 
-    // Km enorme
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(72);
-    doc.text(`km ${formatKm(r.km)}`, plateX + plateW / 2, plateY + 68, { align: "center" });
-
-    // Estaca / hm
-    const der = kmToDer(r.km);
-    doc.setFontSize(14);
-    doc.text(
-      `Estaca ${der.estacas} + ${der.extra.toFixed(2)}   ·   ${kmToHectometros(r.km).toFixed(2)} hm`,
-      plateX + plateW / 2,
-      plateY + 90,
-      { align: "center" },
-    );
-
-    if (r.descricao) {
-      doc.setFontSize(12);
-      doc.setTextColor(80);
-      doc.text(r.descricao, plateX + plateW / 2, plateY + 102, { align: "center" });
+      // Lado direito da pista: sentido CRESCENTE → km original
+      drawPlate(doc, {
+        x: startX + plateW + gap,
+        y: plateY,
+        w: plateW,
+        h: plateH,
+        title: "LADO DIREITO · CRESCENTE →",
+        titleColor: [16, 185, 129],
+        kmLabel: `km ${formatKm(r.km)}`,
+        subline,
+        descricao: r.descricao,
+      });
+    } else {
+      drawPlate(doc, {
+        x: 60,
+        y: 50,
+        w: 177,
+        h: 130,
+        title: meta.direction === "asc" ? "↑ CRESCENTE" : "↓ DECRESCENTE",
+        titleColor:
+          meta.direction === "asc" ? [16, 185, 129] : [200, 60, 60],
+        kmLabel: `km ${formatKm(r.km)}`,
+        subline,
+        descricao: r.descricao,
+      });
     }
 
     // Footer
@@ -179,7 +249,9 @@ export function exportPdfPlacas(meta: ProjectMeta, rows: Row[]) {
     doc.text(`${idx + 1} / ${rows.length}`, W - 14, H - 8, { align: "right" });
   });
 
-  doc.save(`${slug(meta.name)}-placas.pdf`);
+  doc.save(
+    `${slug(meta.name)}-placas${mode === "both" ? "-dois-lados" : ""}.pdf`,
+  );
 }
 
 function slug(s: string) {
