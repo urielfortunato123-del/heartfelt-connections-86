@@ -28,8 +28,6 @@ export function PdfPreviewDialog({ open, onOpenChange, blob, filename, title = "
     (async () => {
       try {
         const pdfjs = await import("pdfjs-dist");
-        // Worker via CDN matching installed version
-        // @ts-expect-error - workerSrc is a string
         pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
         const buf = await blob.arrayBuffer();
