@@ -1,28 +1,43 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { Gauge, Zap, Navigation } from "lucide-react";
-import heroImg from "@/assets/hero-neon-road.jpg";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Copy, Gauge, History, Keyboard, Navigation, Trash2, Zap } from "lucide-react";
+import { toast } from "sonner";
+import { z } from "zod";
+
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { Speedometer } from "@/components/Speedometer";
+import {
+  DISTANCE_UNITS,
+  formatNumber,
+  toEditableString,
+} from "@/lib/converters/distance";
+
+const searchSchema = z.object({
+  km: z.coerce.number().optional(),
+});
 
 export const Route = createFileRoute("/")({
+  validateSearch: searchSchema,
   component: Index,
 });
 
-const UNITS = [
-  { key: "m", label: "Meters", factor: 1000, suffix: "m" },
-  { key: "mi", label: "Miles", factor: 0.621371, suffix: "mi" },
-  { key: "nmi", label: "Nautical Miles", factor: 0.539957, suffix: "nmi" },
-  { key: "yd", label: "Yards", factor: 1093.61, suffix: "yd" },
-  { key: "ft", label: "Feet", factor: 3280.84, suffix: "ft" },
-  { key: "ly", label: "Light-Years", factor: 1.057e-16, suffix: "ly" },
-];
+const PRESETS = [1, 5, 10, 100, 1000];
+const MAX_RANGE = 1000;
+const HISTORY_KEY = "kmcp.history.v1";
 
-function format(n: number) {
-  if (!isFinite(n)) return "—";
-  if (n === 0) return "0";
-  const abs = Math.abs(n);
-  if (abs < 0.0001 || abs >= 1e9) return n.toExponential(4);
-  return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+type HistoryEntry = { km: number; at: number };
+
+function loadHistory(): HistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as HistoryEntry[];
+    return Array.isArray(parsed) ? parsed.slice(0, 8) : [];
+  } catch {
+    return [];
+  }
 }
 
 function Particles() {
@@ -37,7 +52,7 @@ function Particles() {
     [],
   );
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       {dots.map((p, i) => (
         <motion.span
           key={i}
@@ -58,12 +73,125 @@ function Particles() {
   );
 }
 
+function formatTravelTime(hours: number): string {
+  if (!Number.isFinite(hours) || hours <= 0) return "0min";
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m}min`;
+  if (h < 24) return `${h}h ${m.toString().padStart(2, "0")}min`;
+  const days = Math.floor(h / 24);
+  const remHours = h % 24;
+  return `${days}d ${remHours}h`;
+}
+
 function Index() {
-  const [km, setKm] = useState<number>(100);
+  const search = useSearch({ from: "/" });
+  const initial = Number.isFinite(search.km) && search.km! > 0 ? search.km! : 100;
+
+  const [km, setKmState] = useState<number>(initial);
+  const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory());
+
+  // Wrapper that also schedules a history push (debounced) and URL sync
+  const setKm = useCallback((next: number) => {
+    setKmState(Number.isFinite(next) ? next : 0);
+  }, []);
+
+  // Sync URL ?km= (replace, no scroll jump)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (km && Number.isFinite(km)) {
+      url.searchParams.set("km", String(km));
+    } else {
+      url.searchParams.delete("km");
+    }
+    window.history.replaceState(null, "", url.toString());
+  }, [km]);
+
+  // Debounced history push
+  useEffect(() => {
+    if (!km || !Number.isFinite(km)) return;
+    const t = window.setTimeout(() => {
+      setHistory((prev) => {
+        if (prev[0]?.km === km) return prev;
+        const next = [{ km, at: Date.now() }, ...prev.filter((e) => e.km !== km)].slice(0, 6);
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+        } catch {
+          // ignore quota errors
+        }
+        return next;
+      });
+    }, 900);
+    return () => window.clearTimeout(t);
+  }, [km]);
+
+  // Keyboard shortcuts: ↑/↓ adjust, number keys jump to presets
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (isTyping) return;
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setKm(Math.max(0, km + (e.shiftKey ? 10 : 1)));
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setKm(Math.max(0, km - (e.shiftKey ? 10 : 1)));
+      } else if (/^[1-5]$/.test(e.key)) {
+        setKm(PRESETS[parseInt(e.key, 10) - 1]);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [km, setKm]);
+
+  const copyValue = useCallback(
+    async (value: number, unitLabel: string, suffix: string) => {
+      const text = `${formatNumber(value)} ${suffix}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success("Copied", { description: `${unitLabel}: ${text}` });
+      } catch {
+        toast.error("Could not copy to clipboard");
+      }
+    },
+    [],
+  );
+
+  const shareLink = useCallback(async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied", { description: url });
+    } catch {
+      toast.error("Could not copy link");
+    }
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+    try {
+      localStorage.removeItem(HISTORY_KEY);
+    } catch {
+      /* noop */
+    }
+    toast("History cleared");
+  }, []);
+
+  // Derived
+  const speedKmh = (Number.isFinite(km) ? km : 0) * 1.3; // illustrative HUD value
+  const speedProgress = Math.min(1, speedKmh / 300);
+  const travelHours = km > 0 ? km / 100 : 0; // assume 100 km/h cruise
 
   return (
     <div
-      className="relative min-h-screen w-full overflow-hidden text-white"
+      className="relative min-h-dvh w-full overflow-hidden text-white"
       style={{ backgroundColor: "#050505" }}
     >
       {/* Ambient glows */}
@@ -100,16 +228,22 @@ function Index() {
             KM/CONVERTER · PRO
           </span>
         </div>
-        <div className="hidden gap-8 font-mono text-xs tracking-widest text-white/50 md:flex">
-          <span>v2.0.77</span>
-          <span className="text-cyan-300">// ONLINE</span>
+        <div className="hidden items-center gap-4 md:flex">
+          <button
+            onClick={shareLink}
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-white/70 transition-colors hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          >
+            SHARE
+          </button>
+          <span className="font-mono text-[10px] tracking-[0.3em] text-cyan-300">
+            // ONLINE
+          </span>
         </div>
       </header>
 
-      {/* Hero */}
-      <main className="relative z-10 mx-auto max-w-7xl px-6 pt-8 pb-24">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
-          {/* Left: copy + converter */}
+      <main className="relative z-10 mx-auto max-w-7xl px-6 pt-4 pb-24">
+        <div className="grid items-start gap-12 lg:grid-cols-[1.1fr_1fr]">
+          {/* LEFT: copy + converter */}
           <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -146,13 +280,14 @@ function Index() {
               transition={{ delay: 0.4, duration: 1 }}
               className="mt-6 max-w-md text-base text-white/60"
             >
-              A cinematic converter built for engineers, drivers, and travelers
-              of the next decade. Convert kilometers across every unit in real
+              A cinematic converter built for engineers, drivers and travelers
+              of the next decade. Edit any field — every unit updates in real
               time.
             </motion.p>
 
             {/* Converter card */}
-            <motion.div
+            <motion.section
+              aria-label="Distance converter"
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.9 }}
@@ -183,31 +318,34 @@ function Index() {
                   aria-label="Distance in kilometers"
                   value={Number.isFinite(km) ? km : ""}
                   onChange={(e) => setKm(parseFloat(e.target.value))}
-                  className="w-full bg-transparent text-5xl font-light tracking-tight text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60 rounded-md md:text-6xl"
+                  className="w-full rounded-md bg-transparent text-5xl font-light tracking-tight text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:text-6xl"
                   placeholder="0"
                 />
-                <span className="pb-2 font-mono text-sm tracking-[0.3em] text-cyan-300" aria-hidden="true">
+                <span
+                  className="pb-2 font-mono text-sm tracking-[0.3em] text-cyan-300"
+                  aria-hidden="true"
+                >
                   KM
                 </span>
               </div>
 
               <label htmlFor="km-slider" className="sr-only">
-                Adjust kilometers with slider, range 0 to 1000
+                Adjust kilometers with slider, range 0 to {MAX_RANGE}
               </label>
               <input
                 id="km-slider"
                 type="range"
                 min={0}
-                max={1000}
+                max={MAX_RANGE}
                 step={1}
                 aria-label="Kilometers slider"
                 aria-valuemin={0}
-                aria-valuemax={1000}
-                aria-valuenow={Number.isFinite(km) ? Math.min(km, 1000) : 0}
+                aria-valuemax={MAX_RANGE}
+                aria-valuenow={Number.isFinite(km) ? Math.min(km, MAX_RANGE) : 0}
                 aria-valuetext={`${Number.isFinite(km) ? km : 0} kilometers`}
-                value={Number.isFinite(km) ? Math.min(km, 1000) : 0}
+                value={Number.isFinite(km) ? Math.min(km, MAX_RANGE) : 0}
                 onChange={(e) => setKm(parseFloat(e.target.value))}
-                className="mt-6 w-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 rounded-full"
+                className="mt-6 w-full rounded-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
               />
 
               <div
@@ -215,7 +353,7 @@ function Index() {
                 aria-label="Quick distance presets"
                 className="mt-6 flex flex-wrap gap-2"
               >
-                {[1, 5, 10, 100, 1000].map((preset) => {
+                {PRESETS.map((preset, i) => {
                   const active = km === preset;
                   return (
                     <motion.button
@@ -223,7 +361,7 @@ function Index() {
                       type="button"
                       onClick={() => setKm(preset)}
                       aria-pressed={active}
-                      aria-label={`Set distance to ${preset} kilometers`}
+                      aria-label={`Set distance to ${preset} kilometers (press ${i + 1})`}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       className={`rounded-full border px-4 py-1.5 font-mono text-xs tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 ${
@@ -247,22 +385,13 @@ function Index() {
                 ↔ EDIT ANY FIELD · BIDIRECTIONAL
               </p>
 
-
-
-
               <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-                {UNITS.map((u, i) => {
+                {DISTANCE_UNITS.map((u, i) => {
                   const value = (Number.isFinite(km) ? km : 0) * u.factor;
-                  const display = Number.isFinite(value)
-                    ? Number(value.toPrecision(8)).toString()
-                    : "";
                   return (
-                    <motion.label
+                    <div
                       key={u.key}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 + i * 0.05 }}
-                      className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black/40 p-4 transition-colors focus-within:border-cyan-400/60 hover:border-white/20"
+                      className="group relative overflow-hidden rounded-xl border border-white/10 bg-black/40 p-4 transition-colors focus-within:border-cyan-400/60 hover:border-white/20"
                     >
                       <div
                         className="absolute inset-x-0 -top-px h-px"
@@ -273,82 +402,170 @@ function Index() {
                               : "linear-gradient(90deg,transparent, #22d3ee, transparent)",
                         }}
                       />
-                      <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.25em] text-white/40">
+                      <label
+                        htmlFor={`unit-${u.key}`}
+                        className="flex items-center justify-between font-mono text-[10px] tracking-[0.25em] text-white/40"
+                      >
                         <span>{u.label.toUpperCase()}</span>
                         <span className="text-white/30">{u.suffix}</span>
+                      </label>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          id={`unit-${u.key}`}
+                          type="number"
+                          inputMode="decimal"
+                          aria-label={`Distance in ${u.label}`}
+                          value={toEditableString(value)}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            setKm(Number.isFinite(v) ? v / u.factor : 0);
+                          }}
+                          className="w-full truncate rounded bg-transparent text-xl font-medium text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+                          placeholder="0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => copyValue(value, u.label, u.suffix)}
+                          aria-label={`Copy ${u.label} value`}
+                          className="rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/5 hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        aria-label={`Distance in ${u.label}`}
-                        value={display}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          if (!Number.isFinite(v)) {
-                            setKm(0);
-                            return;
-                          }
-                          setKm(v / u.factor);
-                        }}
-                        className="mt-2 w-full truncate rounded bg-transparent text-xl font-medium text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-                        placeholder="0"
-                      />
-                    </motion.label>
+                    </div>
                   );
                 })}
               </div>
-            </motion.div>
+
+              {/* Travel time strip */}
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/30 px-4 py-3">
+                <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.25em] text-white/40">
+                  <Navigation className="h-3 w-3 text-fuchsia-400" />
+                  TRAVEL TIME · @ 100 KM/H
+                </div>
+                <div className="font-mono text-sm text-white">
+                  <AnimatedNumber value={travelHours} className="text-cyan-300" />
+                  <span className="ml-1 text-xs text-white/40">h</span>
+                  <span className="ml-3 text-white/60">{formatTravelTime(travelHours)}</span>
+                </div>
+              </div>
+
+              {/* Keyboard hint */}
+              <div className="mt-4 hidden items-center gap-2 font-mono text-[10px] tracking-[0.25em] text-white/30 md:flex">
+                <Keyboard className="h-3 w-3" />
+                <span>↑/↓ adjust · shift = ×10 · 1–5 = presets</span>
+              </div>
+            </motion.section>
           </div>
 
-          {/* Right: hero illustration */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
-            className="relative"
-          >
-            <div
-              className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10"
+          {/* RIGHT: speedometer + history */}
+          <div className="space-y-6 lg:sticky lg:top-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="relative overflow-hidden rounded-[2rem] border border-white/10 p-6"
               style={{
+                background:
+                  "radial-gradient(ellipse at top, rgba(34,211,238,0.15), transparent 60%), #0a0a0f",
                 boxShadow:
                   "0 0 120px -20px rgba(34,211,238,.4), 0 0 120px -20px rgba(168,85,247,.4)",
               }}
             >
-              <img
-                src={heroImg}
-                alt="Holographic neon road HUD"
-                width={1536}
-                height={1024}
-                className="h-full w-full object-cover"
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(180deg, rgba(5,5,5,0) 50%, rgba(5,5,5,0.9) 100%)",
-                }}
-              />
-              {/* HUD overlay */}
-              <motion.div
-                animate={{ opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="absolute left-6 top-6 font-mono text-[10px] tracking-[0.3em] text-cyan-300"
-              >
-                ◆ NAV.SYS · LOCKED
-              </motion.div>
-              <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between font-mono text-[10px] text-white/70">
+              <div className="mb-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
+                <span>HUD · VELOCITY PROJECTION</span>
+                <motion.span
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2.5, repeat: Infinity }}
+                  className="text-cyan-300"
+                >
+                  ◆ NAV.LOCK
+                </motion.span>
+              </div>
+              <div className="mx-auto aspect-square max-w-[360px]">
+                <Speedometer
+                  progress={speedProgress}
+                  label={Math.round(speedKmh).toLocaleString()}
+                  unit="km/h"
+                />
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center font-mono text-[10px] tracking-[0.25em] text-white/40">
                 <div>
-                  <div className="text-[9px] tracking-[0.3em] text-white/40">
-                    VELOCITY
-                  </div>
-                  <div className="text-2xl text-white">
-                    {format((Number.isFinite(km) ? km : 0) * 1.3)} <span className="text-xs text-cyan-300">km/h</span>
+                  <div className="text-white/30">DIST</div>
+                  <div className="mt-1 text-white">
+                    <AnimatedNumber value={km} /> km
                   </div>
                 </div>
-                <Navigation className="h-5 w-5 text-fuchsia-400" />
+                <div>
+                  <div className="text-white/30">RANGE</div>
+                  <div className="mt-1 text-white">0–300</div>
+                </div>
+                <div>
+                  <div className="text-white/30">MODE</div>
+                  <div className="mt-1 text-cyan-300">CRUISE</div>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+
+            {/* History panel */}
+            <motion.section
+              aria-label="Recent conversions"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+              className="rounded-2xl border border-white/10 bg-black/40 p-5 backdrop-blur-xl"
+            >
+              <div className="mb-3 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
+                <span className="flex items-center gap-1.5">
+                  <History className="h-3 w-3 text-cyan-300" /> RECENT
+                </span>
+                {history.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearHistory}
+                    aria-label="Clear history"
+                    className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              {history.length === 0 ? (
+                <p className="font-mono text-[11px] text-white/30">
+                  No conversions yet — start typing.
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  <AnimatePresence initial={false}>
+                    {history.map((h) => (
+                      <motion.li
+                        key={`${h.km}-${h.at}`}
+                        layout
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setKm(h.km)}
+                          className="group flex w-full items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-left transition-colors hover:border-cyan-400/40 hover:bg-cyan-400/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+                        >
+                          <span className="font-mono text-sm text-white">
+                            {formatNumber(h.km)}{" "}
+                            <span className="text-xs text-white/40">km</span>
+                          </span>
+                          <span className="font-mono text-[10px] tracking-[0.2em] text-white/30 group-hover:text-cyan-300">
+                            RESTORE →
+                          </span>
+                        </button>
+                      </motion.li>
+                    ))}
+                  </AnimatePresence>
+                </ul>
+              )}
+            </motion.section>
+          </div>
         </div>
       </main>
     </div>
