@@ -24,8 +24,10 @@ import {
   exportExcel,
   exportPdfPlacas,
   exportPdfTable,
+  importSpreadsheet,
   type ProjectMeta,
 } from "@/lib/projeto/export";
+
 
 const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
 
