@@ -192,7 +192,7 @@ function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
         </span>
         <span>
           = <span className="text-white">{formatNumber(meters)} m</span> ·{" "}
-          <span className="text-white">{formatNumber(km)} km</span>
+          <span className="text-white">{formatKm(km)} km</span>
         </span>
       </div>
     </section>
