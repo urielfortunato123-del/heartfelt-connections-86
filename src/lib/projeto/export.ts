@@ -275,6 +275,83 @@ export function exportPdfPlacas(
   const W = 297;
   const H = 210;
 
+  // ====== CAPA ======
+  const kmMin = Math.min(meta.startKm, meta.endKm);
+  const kmMax = Math.max(meta.startKm, meta.endKm);
+  const extentKm = Math.abs(meta.endKm - meta.startKm);
+  const today = new Date();
+  const dateStr = today.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, W, H, "F");
+
+  // Faixa decorativa
+  doc.setFillColor(168, 85, 247);
+  doc.rect(0, 0, W, 6, "F");
+  doc.setFillColor(34, 211, 238);
+  doc.rect(0, H - 6, W, 6, "F");
+
+  doc.setTextColor(168, 85, 247);
+  doc.setFontSize(14);
+  doc.text("PROJETO DE PISTA", W / 2, 50, { align: "center" });
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(56);
+  doc.text(meta.name || "—", W / 2, 80, { align: "center" });
+
+  doc.setTextColor(180);
+  doc.setFontSize(14);
+  doc.text(
+    mode === "both"
+      ? "Placas — dois lados da pista"
+      : mode === "grid"
+        ? "Placas — consolidado"
+        : `Placas — sentido ${meta.direction === "asc" ? "crescente" : "decrescente"}`,
+    W / 2,
+    95,
+    { align: "center" },
+  );
+
+  // Caixa de info
+  doc.setDrawColor(168, 85, 247);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(50, 115, W - 100, 60, 4, 4, "S");
+
+  doc.setTextColor(140);
+  doc.setFontSize(10);
+  doc.text("INTERVALO DE KM", 60, 128);
+  doc.text("SENTIDO", 60, 148);
+  doc.text("PASSO", 160, 128);
+  doc.text("DATA", 160, 148);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.text(`km ${formatKm(kmMin)} → km ${formatKm(kmMax)}`, 60, 138);
+  doc.text(meta.direction === "asc" ? "Crescente (+)" : "Decrescente (-)", 60, 158);
+  doc.text(`${meta.step} km`, 160, 138);
+  doc.text(dateStr, 160, 158);
+
+  doc.setTextColor(120);
+  doc.setFontSize(11);
+  doc.text(
+    `Extensão total: ${extentKm.toFixed(3)} km   ·   ${rows.length} placa(s)`,
+    W / 2,
+    188,
+    { align: "center" },
+  );
+
+  doc.setFontSize(8);
+  doc.setTextColor(100);
+  doc.text("Gerado automaticamente pelo Editor de Projeto de Pista", W / 2, H - 14, {
+    align: "center",
+  });
+
+
+
   // ====== GRID: várias placas por página ======
   if (mode === "grid") {
     const cols = 3;
