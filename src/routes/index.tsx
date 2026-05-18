@@ -558,7 +558,7 @@ function Index() {
                     <motion.button
                       key={preset}
                       type="button"
-                      onClick={() => setKm(preset)}
+                      onClick={() => { setKm(preset); commitUrl(preset); }}
                       aria-pressed={active}
                       aria-label={`Set distance to ${preset} kilometers (press ${i + 1})`}
                       whileHover={{ scale: 1.05 }}
