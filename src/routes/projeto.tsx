@@ -284,6 +284,20 @@ function ProjetoPage() {
             </h1>
           </div>
           <div className="flex flex-wrap gap-2">
+            <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-cyan-400/40 bg-cyan-500/10 px-3 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20">
+              <Upload className="mr-1 h-4 w-4" /> Importar CSV/Excel
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  void handleImport(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+
             <Button size="sm" variant="secondary" onClick={() => exportExcel(meta, rows)} disabled={rows.length === 0}>
               <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
             </Button>
