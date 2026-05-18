@@ -403,7 +403,14 @@ function Index() {
         }
       }
     };
-    requestAnimationFrame(restore);
+    requestAnimationFrame(() => {
+      restore();
+      try {
+        window.history.scrollRestoration = prevRestoration;
+      } catch {
+        // ignore
+      }
+    });
   }, []);
 
 
