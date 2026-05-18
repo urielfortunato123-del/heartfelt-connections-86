@@ -354,11 +354,48 @@ function Index() {
     if (url.toString() === window.location.href) return;
     const x = window.scrollX;
     const y = window.scrollY;
+    // Preserva foco + seleção do campo ativo (ex.: input de metros) ao mexer na URL.
+    const active = document.activeElement as HTMLElement | null;
+    const isTextInput =
+      active instanceof HTMLInputElement &&
+      (active.type === "number" || active.type === "text" || active.type === "search");
+    const activeId = active?.id || null;
+    let selStart: number | null = null;
+    let selEnd: number | null = null;
+    let selDir: "forward" | "backward" | "none" = "none";
+    if (isTextInput) {
+      try {
+        selStart = (active as HTMLInputElement).selectionStart;
+        selEnd = (active as HTMLInputElement).selectionEnd;
+        selDir = ((active as HTMLInputElement).selectionDirection ?? "none") as
+          | "forward"
+          | "backward"
+          | "none";
+      } catch {
+        // number inputs throw on selection access in some browsers — ignore
+      }
+    }
     window.history.replaceState(null, "", url.toString());
     if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y);
-    requestAnimationFrame(() => {
+    const restore = () => {
       if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y);
-    });
+      if (!activeId) return;
+      const el = document.getElementById(activeId) as HTMLElement | null;
+      if (!el) return;
+      if (document.activeElement !== el) el.focus({ preventScroll: true });
+      if (
+        el instanceof HTMLInputElement &&
+        selStart !== null &&
+        selEnd !== null
+      ) {
+        try {
+          el.setSelectionRange(selStart, selEnd, selDir);
+        } catch {
+          // ignore — input type may not support selection
+        }
+      }
+    };
+    requestAnimationFrame(restore);
   }, []);
 
 
