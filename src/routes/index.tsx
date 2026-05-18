@@ -210,36 +210,28 @@ function Index() {
     setKmState(Number.isFinite(next) ? next : 0);
   }, []);
 
-  // Sync URL ?km= — debounced para evitar replaceState a cada tick do slider
-  // (em alguns hosts/iframes isso provoca scroll-to-top)
-  useEffect(() => {
+  // Sincroniza ?km= APENAS quando explicitamente "commitado"
+  // (onPointerUp/onKeyUp do slider, onBlur do input, clique em preset/history).
+  // Evita replaceState a cada tick durante o arraste — que causava scroll/jank.
+  const commitUrl = useCallback((value: number) => {
     if (typeof window === "undefined") return;
-    const t = window.setTimeout(() => {
-      const url = new URL(window.location.href);
-      if (km && Number.isFinite(km)) {
-        url.searchParams.set("km", String(km));
-      } else {
-        url.searchParams.delete("km");
-      }
-      if (url.toString() !== window.location.href) {
-        // Preserva a posição de scroll: alguns hosts/iframes disparam
-        // scroll-to-top após replaceState. Capturamos antes e restauramos
-        // em seguida (incluindo um rAF para vencer qualquer scroll-restore).
-        const x = window.scrollX;
-        const y = window.scrollY;
-        window.history.replaceState(null, "", url.toString());
-        if (window.scrollX !== x || window.scrollY !== y) {
-          window.scrollTo(x, y);
-        }
-        requestAnimationFrame(() => {
-          if (window.scrollX !== x || window.scrollY !== y) {
-            window.scrollTo(x, y);
-          }
-        });
-      }
-    }, 400);
-    return () => window.clearTimeout(t);
-  }, [km]);
+    const url = new URL(window.location.href);
+    if (Number.isFinite(value) && value > 0) {
+      url.searchParams.set("km", String(value));
+    } else {
+      url.searchParams.delete("km");
+    }
+    if (url.toString() === window.location.href) return;
+    const x = window.scrollX;
+    const y = window.scrollY;
+    window.history.replaceState(null, "", url.toString());
+    if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y);
+    requestAnimationFrame(() => {
+      if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y);
+    });
+  }, []);
+
+
 
 
   // Debounced history push
