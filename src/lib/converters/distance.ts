@@ -29,6 +29,15 @@ export function formatNumber(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
+/** Formata km com exatamente 3 casas decimais (precisão de 1 metro). */
+export function formatKm(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
+}
+
 export function toEditableString(n: number): string {
   if (!Number.isFinite(n)) return "";
   return Number(n.toPrecision(8)).toString();
