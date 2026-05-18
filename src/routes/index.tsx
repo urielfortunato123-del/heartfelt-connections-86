@@ -194,16 +194,23 @@ function Index() {
                 className="mt-6 w-full accent-cyan-400"
               />
 
-              <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3">
+              <div className="mt-3 font-mono text-[10px] tracking-[0.3em] text-white/30">
+                ↔ EDIT ANY FIELD · BIDIRECTIONAL
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
                 {UNITS.map((u, i) => {
                   const value = (Number.isFinite(km) ? km : 0) * u.factor;
+                  const display = Number.isFinite(value)
+                    ? Number(value.toPrecision(8)).toString()
+                    : "";
                   return (
-                    <motion.div
+                    <motion.label
                       key={u.key}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.6 + i * 0.05 }}
-                      className="group relative overflow-hidden rounded-xl border border-white/10 bg-black/40 p-4"
+                      className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black/40 p-4 transition-colors focus-within:border-cyan-400/60 hover:border-white/20"
                     >
                       <div
                         className="absolute inset-x-0 -top-px h-px"
@@ -214,14 +221,25 @@ function Index() {
                               : "linear-gradient(90deg,transparent, #22d3ee, transparent)",
                         }}
                       />
-                      <div className="font-mono text-[10px] tracking-[0.25em] text-white/40">
-                        {u.label.toUpperCase()}
+                      <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.25em] text-white/40">
+                        <span>{u.label.toUpperCase()}</span>
+                        <span className="text-white/30">{u.suffix}</span>
                       </div>
-                      <div className="mt-2 truncate text-xl font-medium text-white">
-                        {format(value)}
-                        <span className="ml-1 text-xs text-white/40">{u.suffix}</span>
-                      </div>
-                    </motion.div>
+                      <input
+                        type="number"
+                        value={display}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!Number.isFinite(v)) {
+                            setKm(0);
+                            return;
+                          }
+                          setKm(v / u.factor);
+                        }}
+                        className="mt-2 w-full truncate bg-transparent text-xl font-medium text-white outline-none placeholder:text-white/20"
+                        placeholder="0"
+                      />
+                    </motion.label>
                   );
                 })}
               </div>
