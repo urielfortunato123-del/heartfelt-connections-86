@@ -544,11 +544,11 @@ function Index() {
           </a>
           <button
             onClick={shareLink}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-white/70 transition-colors hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+            className="hidden rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-white/70 transition-colors hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:inline-flex"
           >
             SHARE
           </button>
-          <span className="font-mono text-[10px] tracking-[0.3em] text-cyan-300">
+          <span className="hidden font-mono text-[10px] tracking-[0.3em] text-cyan-300 md:inline">
             // ONLINE
           </span>
         </div>
