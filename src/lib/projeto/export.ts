@@ -22,6 +22,67 @@ export type Row = {
   descricao: string;
 };
 
+export type ImportedRow = {
+  km: number;
+  descricao: string;
+  estacas?: number;
+  excedente?: number;
+};
+
+/**
+ * Importa CSV/XLSX. Aceita colunas (case/acento-insensível):
+ *   km | estaca | excedente (m) | descricao
+ * Se houver "estaca" + "excedente" mas não houver "km", reconstrói km = (estaca*20 + excedente)/1000.
+ */
+export async function importSpreadsheet(file: File): Promise<ImportedRow[]> {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  if (!sheet) throw new Error("Planilha vazia");
+  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+
+  const norm = (s: string) =>
+    s
+      .toString()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "");
+
+  const out: ImportedRow[] = [];
+  for (const r of raw) {
+    const map: Record<string, unknown> = {};
+    for (const k of Object.keys(r)) map[norm(k)] = r[k];
+
+    const kmRaw = map.km ?? map.quilometro ?? map.kilometro;
+    const estRaw = map.estaca ?? map.estacas;
+    const excRaw = map.excedente ?? map.excedentem ?? map.extra ?? map.metros;
+    const descRaw =
+      map.descricao ?? map.descricaodoponto ?? map.observacao ?? map.obs ?? map.label ?? "";
+
+    let km: number | null = null;
+    if (kmRaw !== undefined && kmRaw !== "") {
+      const n = Number(String(kmRaw).replace(",", "."));
+      if (Number.isFinite(n)) km = n;
+    }
+    if (km === null && estRaw !== undefined && estRaw !== "") {
+      const est = Number(String(estRaw).replace(",", "."));
+      const exc = excRaw !== undefined && excRaw !== "" ? Number(String(excRaw).replace(",", ".")) : 0;
+      if (Number.isFinite(est)) km = (est * 20 + (Number.isFinite(exc) ? exc : 0)) / 1000;
+    }
+    if (km === null) continue;
+
+    out.push({
+      km,
+      descricao: String(descRaw ?? "").trim(),
+      estacas: estRaw !== undefined && estRaw !== "" ? Number(estRaw) : undefined,
+      excedente: excRaw !== undefined && excRaw !== "" ? Number(excRaw) : undefined,
+    });
+  }
+  return out;
+}
+
+
 function buildRows(rows: Row[]): Record<string, string | number>[] {
   return rows.map((r) => {
     const der = kmToDer(r.km);

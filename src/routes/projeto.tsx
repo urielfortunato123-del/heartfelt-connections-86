@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, FileDown, FileSpreadsheet, FileText, MapPin, Plus, Route as RouteIcon, Trash2 } from "lucide-react";
+import { ArrowLeft, FileDown, FileSpreadsheet, FileText, MapPin, Plus, Route as RouteIcon, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +24,10 @@ import {
   exportExcel,
   exportPdfPlacas,
   exportPdfTable,
+  importSpreadsheet,
   type ProjectMeta,
 } from "@/lib/projeto/export";
+
 
 const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
 
@@ -175,6 +177,83 @@ function ProjetoPage() {
     setMeta((m) => ({ ...m, startKm: 0, endKm: 0 }));
   }
 
+  async function handleImport(file: File | null) {
+    if (!file) return;
+    try {
+      const imported = await importSpreadsheet(file);
+      if (imported.length === 0) {
+        toast.error("Nenhuma linha válida encontrada. Verifique colunas: km, estaca, excedente, descrição.");
+        return;
+      }
+
+      // Adapta km à direção do projeto (planilha é tratada como absoluta).
+      const descPatch: Record<string, string> = {};
+      const newManuals: Manual[] = [];
+      const hasRoute = polyline.length >= 2;
+      const autoKmSet = new Set(kmMarkers.map((m) => Number(m.km.toFixed(3))));
+
+      // Importa ajustando startKm/endKm se vier além dos limites
+      let minKm = Infinity;
+      let maxKm = -Infinity;
+
+      imported.forEach((row, i) => {
+        const km = row.km;
+        if (km < minKm) minKm = km;
+        if (km > maxKm) maxKm = km;
+        descPatch[`km-${km}`] = row.descricao;
+
+        // Se NÃO bater com a grade automática, vira ponto manual
+        const rounded = Number(km.toFixed(3));
+        if (!autoKmSet.has(rounded) && row.descricao) {
+          let lat = 0;
+          let lng = 0;
+          if (hasRoute) {
+            // interpola posição na rota a partir do km relativo
+            const rel = meta.direction === "asc" ? km - meta.startKm : meta.startKm - km;
+            // pequeno helper inline: pega ponto mais próximo do cum
+            let bestIdx = 0;
+            let bestDiff = Infinity;
+            for (let j = 0; j < cum.length; j++) {
+              const d = Math.abs(cum[j] - rel);
+              if (d < bestDiff) {
+                bestDiff = d;
+                bestIdx = j;
+              }
+            }
+            lat = polyline[bestIdx]?.[0] ?? 0;
+            lng = polyline[bestIdx]?.[1] ?? 0;
+          }
+          newManuals.push({
+            id: `imp-${Date.now()}-${i}`,
+            km,
+            lat,
+            lng,
+            label: row.descricao,
+          });
+        }
+      });
+
+      setDescriptions((d) => ({ ...d, ...descPatch }));
+      if (newManuals.length > 0) setManuals((arr) => [...arr, ...newManuals]);
+
+      // Se não há rota, ajusta limites do projeto pelo que foi importado
+      if (!hasRoute && Number.isFinite(minKm) && Number.isFinite(maxKm)) {
+        setMeta((m) => ({
+          ...m,
+          startKm: Math.min(m.startKm, minKm),
+          endKm: Math.max(m.endKm, maxKm),
+        }));
+      }
+
+      toast.success(
+        `${imported.length} linha(s) importada(s). ${newManuals.length} viraram pontos manuais.`,
+      );
+    } catch (err) {
+      toast.error(`Falha ao importar: ${(err as Error).message}`);
+    }
+  }
+
+
   // Linhas finais para tabela/export
   const rows = useMemo(() => {
     const auto = kmMarkers.map((m) => ({
@@ -205,6 +284,20 @@ function ProjetoPage() {
             </h1>
           </div>
           <div className="flex flex-wrap gap-2">
+            <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-cyan-400/40 bg-cyan-500/10 px-3 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20">
+              <Upload className="mr-1 h-4 w-4" /> Importar CSV/Excel
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  void handleImport(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+
             <Button size="sm" variant="secondary" onClick={() => exportExcel(meta, rows)} disabled={rows.length === 0}>
               <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
             </Button>
