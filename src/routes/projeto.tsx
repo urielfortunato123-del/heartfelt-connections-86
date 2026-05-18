@@ -17,6 +17,7 @@ import {
   distributeKmMarkers,
   fetchOsrmRoute,
   nearestKm,
+  nearestOnRoute,
   type LL,
 } from "@/lib/projeto/geo";
 import {
