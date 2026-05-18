@@ -310,7 +310,8 @@ export function exportPdfPlacas(
   mode: PlateSide = "single",
   kmFormat: KmLabelFormat = "decimal3",
   bothLayout: BothLayout = DEFAULT_BOTH_LAYOUT,
-) {
+  outputMode: "save" | "blob" = "save",
+): Blob | void {
 
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
