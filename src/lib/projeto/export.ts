@@ -166,6 +166,27 @@ export function exportPdfTable(meta: ProjectMeta, rows: Row[]) {
 
 type PlateSide = "single" | "both" | "grid";
 
+export type KmLabelFormat = "padded" | "integer" | "decimal1" | "decimal3";
+
+export function formatKmLabel(km: number, fmt: KmLabelFormat = "decimal3"): string {
+  const abs = Math.abs(km);
+  switch (fmt) {
+    case "padded": {
+      // km 012 — sempre 3 dígitos zero à esquerda, inteiro arredondado
+      const n = Math.round(abs);
+      return `km ${n.toString().padStart(3, "0")}`;
+    }
+    case "integer":
+      return `km ${Math.round(abs)}`;
+    case "decimal1":
+      return `km ${abs.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+    case "decimal3":
+    default:
+      return `km ${formatKm(abs)}`;
+  }
+}
+
+
 function drawPlate(
   doc: jsPDF,
   opts: {
@@ -229,7 +250,9 @@ export function exportPdfPlacas(
   meta: ProjectMeta,
   rows: Row[],
   mode: PlateSide = "single",
+  kmFormat: KmLabelFormat = "decimal3",
 ) {
+
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const W = 297;
   const H = 210;
@@ -282,7 +305,7 @@ export function exportPdfPlacas(
             ? "↑ CRESCENTE"
             : "↓ DECRESCENTE",
         titleColor: meta.direction === "asc" ? [16, 185, 129] : [200, 60, 60],
-        kmLabel: `km ${formatKm(r.km)}`,
+        kmLabel: formatKmLabel(r.km, kmFormat),
         subline: `Est ${der.estacas}+${der.extra.toFixed(1)} · ${kmToHectometros(Math.abs(r.km)).toFixed(1)} hm`,
         descricao: r.descricao,
       });
@@ -341,7 +364,7 @@ export function exportPdfPlacas(
         h: plateH,
         title: "← LADO ESQUERDO · DECRESCENTE",
         titleColor: [200, 60, 60],
-        kmLabel: `km ${formatKm(leftKm)}`,
+        kmLabel: formatKmLabel(leftKm, kmFormat),
         subline,
         descricao: r.descricao,
       });
@@ -354,7 +377,7 @@ export function exportPdfPlacas(
         h: plateH,
         title: "LADO DIREITO · CRESCENTE →",
         titleColor: [16, 185, 129],
-        kmLabel: `km ${formatKm(r.km)}`,
+        kmLabel: formatKmLabel(r.km, kmFormat),
         subline,
         descricao: r.descricao,
       });
@@ -367,7 +390,7 @@ export function exportPdfPlacas(
         title: meta.direction === "asc" ? "↑ CRESCENTE" : "↓ DECRESCENTE",
         titleColor:
           meta.direction === "asc" ? [16, 185, 129] : [200, 60, 60],
-        kmLabel: `km ${formatKm(r.km)}`,
+        kmLabel: formatKmLabel(r.km, kmFormat),
         subline,
         descricao: r.descricao,
       });

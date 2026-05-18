@@ -25,8 +25,10 @@ import {
   exportPdfPlacas,
   exportPdfTable,
   importSpreadsheet,
+  type KmLabelFormat,
   type ProjectMeta,
 } from "@/lib/projeto/export";
+
 
 
 const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
@@ -92,6 +94,7 @@ function ProjetoPage() {
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<"start" | "end" | "manual">("start");
   const [loading, setLoading] = useState(false);
+  const [kmFormat, setKmFormat] = useState<KmLabelFormat>("decimal3");
 
   // Restaurar do localStorage
   useEffect(() => {
@@ -307,13 +310,24 @@ function ProjetoPage() {
             <Button size="sm" variant="secondary" onClick={() => exportPdfTable(meta, rows)} disabled={rows.length === 0}>
               <FileText className="mr-1 h-4 w-4" /> PDF tabela
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => exportPdfPlacas(meta, rows, "single")} disabled={rows.length === 0}>
+            <select
+              value={kmFormat}
+              onChange={(e) => setKmFormat(e.target.value as KmLabelFormat)}
+              className="h-9 rounded-md border border-white/10 bg-slate-800 px-2 text-xs text-white"
+              title="Formato do rótulo do km nas placas"
+            >
+              <option value="padded">km 012 (3 dígitos)</option>
+              <option value="integer">km 12 (inteiro)</option>
+              <option value="decimal1">km 12,3 (1 decimal)</option>
+              <option value="decimal3">km 12,345 (3 decimais)</option>
+            </select>
+            <Button size="sm" variant="secondary" onClick={() => exportPdfPlacas(meta, rows, "single", kmFormat)} disabled={rows.length === 0}>
               <FileText className="mr-1 h-4 w-4" /> PDF placas
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => exportPdfPlacas(meta, rows, "grid")} disabled={rows.length === 0}>
+            <Button size="sm" variant="secondary" onClick={() => exportPdfPlacas(meta, rows, "grid", kmFormat)} disabled={rows.length === 0}>
               <FileText className="mr-1 h-4 w-4" /> PDF placas (grid)
             </Button>
-            <Button size="sm" onClick={() => exportPdfPlacas(meta, rows, "both")} disabled={rows.length === 0}>
+            <Button size="sm" onClick={() => exportPdfPlacas(meta, rows, "both", kmFormat)} disabled={rows.length === 0}>
               <FileText className="mr-1 h-4 w-4" /> PDF placas (2 lados)
             </Button>
 
