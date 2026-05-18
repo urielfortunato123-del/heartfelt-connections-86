@@ -108,6 +108,8 @@ function ProjetoPage() {
   const [kmFormat, setKmFormat] = useState<KmLabelFormat>("decimal3");
   const [bothLayout, setBothLayout] = useState<BothLayout>(DEFAULT_BOTH_LAYOUT);
   const [gridLayout, setGridLayout] = useState<GridLayout>(DEFAULT_GRID_LAYOUT);
+  const [pageFormat, setPageFormat] = useState<PageFormat>("a4");
+  const [pageOrientation, setPageOrientation] = useState<PageOrientation>("landscape");
   const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
   const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
