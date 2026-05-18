@@ -228,7 +228,7 @@ function ProjetoPage() {
       setStart(saved.start);
       setEnd(saved.end);
       setPolyline(saved.polyline);
-      setManuals(saved.manuals);
+      replaceManuals(saved.manuals);
       setDescriptions(saved.descriptions);
     }
   }, [mounted]);
