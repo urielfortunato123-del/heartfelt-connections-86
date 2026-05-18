@@ -635,17 +635,19 @@ function ProjetoPage() {
                     <tr key={i} className={`border-t border-white/5 hover:bg-white/5 ${isManual ? "bg-cyan-500/5" : ""}`}>
                       <td className="px-3 py-2 font-mono">
                         {isManual && r.id ? (
-                          <Input
-                            type="number"
-                            step="0.001"
-                            className="h-7 w-24 text-xs font-mono"
-                            value={r.km}
-                            onChange={(e) => {
-                              const v = Number(e.target.value);
-                              if (!Number.isFinite(v)) return;
-                              setManuals((arr) => arr.map((x) => (x.id === r.id ? { ...x, km: v } : x)));
-                            }}
-                          />
+                          <div className="space-y-1">
+                            <Input
+                              type="number"
+                              step="0.001"
+                              className={`h-7 w-24 text-xs font-mono ${kmErrors[r.id] ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                              value={kmDrafts[r.id] ?? String(r.km)}
+                              onChange={(e) => commitManualKm(r.id!, e.target.value)}
+                              aria-invalid={!!kmErrors[r.id]}
+                            />
+                            {kmErrors[r.id] && (
+                              <p className="text-[10px] leading-tight text-red-400">{kmErrors[r.id]}</p>
+                            )}
+                          </div>
                         ) : (
                           formatKm(r.km)
                         )}
