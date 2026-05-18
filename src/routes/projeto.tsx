@@ -38,6 +38,7 @@ import {
 
 
 const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
+import { PdfPreviewDialog } from "@/components/projeto/PdfPreviewDialog";
 
 export const Route = createFileRoute("/projeto")({
   head: () => ({
@@ -104,6 +105,8 @@ function ProjetoPage() {
   const [bothLayout, setBothLayout] = useState<BothLayout>(DEFAULT_BOTH_LAYOUT);
   const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
   const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // ---------- Histórico (undo/redo) dos pontos manuais ----------
   const manualsRef = useRef<Manual[]>([]);
@@ -451,7 +454,18 @@ function ProjetoPage() {
             <Button size="sm" variant="secondary" onClick={() => exportPdfPlacas(meta, rows, "single", kmFormat)} disabled={rows.length === 0}>
               <FileText className="mr-1 h-4 w-4" /> PDF placas
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => exportPdfPlacas(meta, rows, "grid", kmFormat)} disabled={rows.length === 0}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob") as Blob | undefined;
+                if (blob) {
+                  setPreviewBlob(blob);
+                  setPreviewOpen(true);
+                }
+              }}
+              disabled={rows.length === 0}
+            >
               <FileText className="mr-1 h-4 w-4" /> PDF placas (grid)
             </Button>
             <Button size="sm" onClick={() => exportPdfPlacas(meta, rows, "both", kmFormat, bothLayout)} disabled={rows.length === 0}>
@@ -790,6 +804,13 @@ function ProjetoPage() {
           </div>
         </section>
       </main>
+      <PdfPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        blob={previewBlob}
+        filename={`${(meta.name || "projeto").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-placas-grid.pdf`}
+        title="Pré-visualização — PDF placas (grid)"
+      />
     </div>
   );
 }

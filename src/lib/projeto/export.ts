@@ -310,7 +310,8 @@ export function exportPdfPlacas(
   mode: PlateSide = "single",
   kmFormat: KmLabelFormat = "decimal3",
   bothLayout: BothLayout = DEFAULT_BOTH_LAYOUT,
-) {
+  outputMode: "save" | "blob" = "save",
+): Blob | void {
 
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -448,6 +449,7 @@ export function exportPdfPlacas(
       });
     });
 
+    if (outputMode === "blob") return doc.output("blob");
     doc.save(`${slug(meta.name)}-placas-grid.pdf`);
     return;
   }
@@ -558,6 +560,7 @@ export function exportPdfPlacas(
     doc.text(`${idx + 1} / ${rows.length}`, W - 14, H - 8, { align: "right" });
   });
 
+  if (outputMode === "blob") return doc.output("blob");
   doc.save(
     `${slug(meta.name)}-placas${mode === "both" ? "-dois-lados" : ""}.pdf`,
   );
