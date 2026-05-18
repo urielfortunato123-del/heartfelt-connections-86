@@ -164,7 +164,7 @@ export function exportPdfTable(meta: ProjectMeta, rows: Row[]) {
   doc.save(`${slug(meta.name)}-estaqueamento.pdf`);
 }
 
-type PlateSide = "single" | "both";
+type PlateSide = "single" | "both" | "grid";
 
 function drawPlate(
   doc: jsPDF,
@@ -182,31 +182,38 @@ function drawPlate(
 ) {
   const { x, y, w, h, title, titleColor, kmLabel, subline, descricao } = opts;
 
+  // Escalas relativas à altura (referência: h=130mm)
+  const scale = h / 130;
+  const titleBar = Math.max(8, 14 * scale);
+  const fsTitle = Math.max(7, 12 * scale);
+  const fsKm = Math.max(18, 54 * scale);
+  const fsSub = Math.max(6, 11 * scale);
+  const fsDesc = Math.max(6, 10 * scale);
+
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(1.5);
-  doc.roundedRect(x, y, w, h, 5, 5, "FD");
+  doc.setLineWidth(1.2);
+  doc.roundedRect(x, y, w, h, 4, 4, "FD");
 
-  // Faixa de título (sentido / lado)
   doc.setFillColor(...titleColor);
-  doc.rect(x, y, w, 14, "F");
+  doc.rect(x, y, w, titleBar, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(12);
-  doc.text(title, x + w / 2, y + 9.5, { align: "center" });
+  doc.setFontSize(fsTitle);
+  doc.text(title, x + w / 2, y + titleBar * 0.7, { align: "center" });
 
-  // Km grande
   doc.setTextColor(15, 23, 42);
-  doc.setFontSize(54);
-  doc.text(kmLabel, x + w / 2, y + h / 2 + 8, { align: "center" });
+  doc.setFontSize(fsKm);
+  doc.text(kmLabel, x + w / 2, y + h / 2 + fsKm * 0.18, { align: "center" });
 
-  // Sub-linha (estaca/hm)
-  doc.setFontSize(11);
-  doc.text(subline, x + w / 2, y + h - 18, { align: "center" });
+  doc.setFontSize(fsSub);
+  doc.text(subline, x + w / 2, y + h - (descricao ? fsDesc * 1.8 + 4 : 4), {
+    align: "center",
+  });
 
   if (descricao) {
-    doc.setFontSize(10);
+    doc.setFontSize(fsDesc);
     doc.setTextColor(80);
-    doc.text(descricao, x + w / 2, y + h - 8, { align: "center" });
+    doc.text(descricao, x + w / 2, y + h - 3, { align: "center" });
   }
 }
 
@@ -215,6 +222,8 @@ function drawPlate(
  * - mode "single": 1 placa por página (respeitando o sentido do projeto).
  * - mode "both":   2 placas por página, lado esquerdo (decrescente) e lado direito (crescente),
  *                  cada uma mostrando o km correto para aquele lado da pista.
+ * - mode "grid":   várias placas por página (3 colunas × 4 linhas = 12 por A4 paisagem),
+ *                  consolidado para impressão econômica.
  */
 export function exportPdfPlacas(
   meta: ProjectMeta,
@@ -224,6 +233,66 @@ export function exportPdfPlacas(
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const W = 297;
   const H = 210;
+
+  // ====== GRID: várias placas por página ======
+  if (mode === "grid") {
+    const cols = 3;
+    const rowsPerPage = 4;
+    const perPage = cols * rowsPerPage;
+    const marginX = 8;
+    const marginTop = 22;
+    const marginBottom = 10;
+    const gap = 4;
+
+    const plateW = (W - marginX * 2 - gap * (cols - 1)) / cols;
+    const plateH = (H - marginTop - marginBottom - gap * (rowsPerPage - 1)) / rowsPerPage;
+
+    rows.forEach((r, idx) => {
+      const slot = idx % perPage;
+      if (slot === 0) {
+        if (idx > 0) doc.addPage();
+        // Fundo + header da página
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, W, H, "F");
+        doc.setTextColor(168, 85, 247);
+        doc.setFontSize(13);
+        doc.text(`${meta.name} · Placas (consolidado)`, 14, 12);
+        doc.setTextColor(180);
+        doc.setFontSize(9);
+        doc.text(
+          `Sentido: ${meta.direction === "asc" ? "Crescente (+km)" : "Decrescente (-km)"}   ·   página ${Math.floor(idx / perPage) + 1}`,
+          14,
+          18,
+        );
+      }
+
+      const col = slot % cols;
+      const row = Math.floor(slot / cols);
+      const x = marginX + col * (plateW + gap);
+      const y = marginTop + row * (plateH + gap);
+
+      const der = kmToDer(Math.abs(r.km));
+      drawPlate(doc, {
+        x,
+        y,
+        w: plateW,
+        h: plateH,
+        title:
+          meta.direction === "asc"
+            ? "↑ CRESCENTE"
+            : "↓ DECRESCENTE",
+        titleColor: meta.direction === "asc" ? [16, 185, 129] : [200, 60, 60],
+        kmLabel: `km ${formatKm(r.km)}`,
+        subline: `Est ${der.estacas}+${der.extra.toFixed(1)} · ${kmToHectometros(Math.abs(r.km)).toFixed(1)} hm`,
+        descricao: r.descricao,
+      });
+    });
+
+    doc.save(`${slug(meta.name)}-placas-grid.pdf`);
+    return;
+  }
+
+
 
   // Para cálculo do km do lado oposto: espelho em torno de (startKm + endKm) / 2
   const mirror = (km: number) => meta.startKm + meta.endKm - km;
