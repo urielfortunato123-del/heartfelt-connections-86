@@ -676,14 +676,14 @@ function ProjetoPage() {
                           className="flex-1"
                           value={m.label}
                           onChange={(e) =>
-                            setManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, label: e.target.value } : x)))
+                            commitManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, label: e.target.value } : x)))
                           }
                         />
                         <Button
                           size="icon"
                           variant="ghost"
                           onClick={() => {
-                            setManuals((arr) => arr.filter((x) => x.id !== m.id));
+                            commitManuals((arr) => arr.filter((x) => x.id !== m.id));
                             setKmDrafts((d) => { const { [m.id]: _, ...rest } = d; return rest; });
                             setKmErrors((e) => { const { [m.id]: _, ...rest } = e; return rest; });
                           }}
