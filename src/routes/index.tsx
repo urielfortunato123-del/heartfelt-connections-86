@@ -9,7 +9,11 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Speedometer } from "@/components/Speedometer";
 import {
   DISTANCE_UNITS,
+  derToKm,
+  formatDer,
   formatNumber,
+  kmToDer,
+  kmToHectometros,
   toEditableString,
 } from "@/lib/converters/distance";
 
