@@ -98,6 +98,7 @@ function ProjetoPage() {
   const [mode, setMode] = useState<"start" | "end" | "manual">("start");
   const [loading, setLoading] = useState(false);
   const [kmFormat, setKmFormat] = useState<KmLabelFormat>("decimal3");
+  const [bothLayout, setBothLayout] = useState<BothLayout>(DEFAULT_BOTH_LAYOUT);
 
   // Restaurar do localStorage
   useEffect(() => {
