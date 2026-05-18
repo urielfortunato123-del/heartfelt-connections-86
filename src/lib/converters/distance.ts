@@ -33,3 +33,40 @@ export function toEditableString(n: number): string {
   if (!Number.isFinite(n)) return "";
   return Number(n.toPrecision(8)).toString();
 }
+
+// ============ DER (Estaca / Hectômetro) ============
+// Padrão DER brasileiro:
+//   1 estaca   = 20 metros
+//   1 hectômetro = 100 m = 5 estacas
+//   1 km       = 1000 m = 50 estacas = 10 hectômetros
+// Notação: "Estaca 52 + 5" = 52 estacas + 5 metros excedentes (0..19)
+export const METERS_PER_ESTACA = 20;
+export const METERS_PER_HECTOMETRO = 100;
+
+export type DerStake = {
+  estacas: number;   // integer, # de estacas inteiras
+  extra: number;     // metros excedentes (0..19), pode ter decimais
+};
+
+export function kmToDer(km: number): DerStake {
+  if (!Number.isFinite(km) || km < 0) return { estacas: 0, extra: 0 };
+  const meters = km * 1000;
+  const estacas = Math.floor(meters / METERS_PER_ESTACA);
+  const extra = meters - estacas * METERS_PER_ESTACA;
+  return { estacas, extra: Math.round(extra * 10000) / 10000 };
+}
+
+export function derToKm(estacas: number, extra: number): number {
+  const e = Number.isFinite(estacas) ? Math.max(0, Math.floor(estacas)) : 0;
+  const x = Number.isFinite(extra) ? Math.max(0, extra) : 0;
+  return (e * METERS_PER_ESTACA + x) / 1000;
+}
+
+export function kmToHectometros(km: number): number {
+  return (Number.isFinite(km) ? km : 0) * 10;
+}
+
+export function formatDer({ estacas, extra }: DerStake): string {
+  const ex = Number.isInteger(extra) ? extra : Number(extra.toFixed(2));
+  return `${estacas} + ${ex}`;
+}
