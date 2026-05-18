@@ -279,6 +279,8 @@ function Index() {
                       </div>
                       <input
                         type="number"
+                        inputMode="decimal"
+                        aria-label={`Distance in ${u.label}`}
                         value={display}
                         onChange={(e) => {
                           const v = parseFloat(e.target.value);
