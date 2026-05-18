@@ -41,6 +41,7 @@ type Props = {
   onUpdatePoint?: (id: string, patch: Partial<Pick<ManualPoint, "km" | "label">>) => void;
   onRemovePoint?: (id: string) => void;
   onMovePoint?: (id: string, latlng: LatLng) => void;
+  onMovePointEnd?: (id: string) => void;
 };
 
 
@@ -64,6 +65,7 @@ export default function RouteMap({
   onUpdatePoint,
   onRemovePoint,
   onMovePoint,
+  onMovePointEnd,
 }: Props) {
 
   const mapRef = useRef<L.Map | null>(null);
@@ -147,6 +149,7 @@ export default function RouteMap({
                       dragend: (e) => {
                         const ll = (e.target as L.Marker).getLatLng();
                         onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                        onMovePointEnd?.(p.id);
                       },
                     }
                   : undefined

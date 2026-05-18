@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, FileDown, FileSpreadsheet, FileText, MapPin, Plus, Route as RouteIcon, Trash2, Upload } from "lucide-react";
 
@@ -105,6 +105,88 @@ function ProjetoPage() {
   const [kmDrafts, setKmDrafts] = useState<Record<string, string>>({});
   const [kmErrors, setKmErrors] = useState<Record<string, string>>({});
 
+  // ---------- Histórico (undo/redo) dos pontos manuais ----------
+  const manualsRef = useRef<Manual[]>([]);
+  useEffect(() => { manualsRef.current = manuals; }, [manuals]);
+  const past = useRef<Manual[][]>([]);
+  const future = useRef<Manual[][]>([]);
+  const draggingId = useRef<string | null>(null);
+  const HISTORY_LIMIT = 100;
+
+  const pushSnapshot = useCallback((snapshot: Manual[]) => {
+    past.current.push(snapshot);
+    if (past.current.length > HISTORY_LIMIT) past.current.shift();
+    future.current = [];
+  }, []);
+
+  /** Replace estado e zera histórico (usar em restore/reset). */
+  const replaceManuals = useCallback((next: Manual[]) => {
+    past.current = [];
+    future.current = [];
+    manualsRef.current = next;
+    setManuals(next);
+  }, []);
+
+  /** Atualiza manuals criando um checkpoint no histórico. */
+  type Updater = Manual[] | ((prev: Manual[]) => Manual[]);
+  const commitManuals = useCallback((updater: Updater) => {
+    const prev = manualsRef.current;
+    const next = typeof updater === "function" ? (updater as (p: Manual[]) => Manual[])(prev) : updater;
+    if (next === prev) return;
+    pushSnapshot(prev);
+    manualsRef.current = next;
+    setManuals(next);
+  }, [pushSnapshot]);
+
+  /** Atualização "transitória" (usada no arraste). Coalesce em um único snapshot. */
+  const liveManuals = useCallback((id: string, updater: Updater) => {
+    const prev = manualsRef.current;
+    if (draggingId.current !== id) {
+      // primeiro movimento do arraste — snapshot do estado anterior
+      pushSnapshot(prev);
+      draggingId.current = id;
+    }
+    const next = typeof updater === "function" ? (updater as (p: Manual[]) => Manual[])(prev) : updater;
+    manualsRef.current = next;
+    setManuals(next);
+  }, [pushSnapshot]);
+
+  const endLive = useCallback(() => { draggingId.current = null; }, []);
+
+  const undo = useCallback(() => {
+    const prev = past.current.pop();
+    if (!prev) return;
+    future.current.push(manualsRef.current);
+    manualsRef.current = prev;
+    setManuals(prev);
+    toast("Desfeito", { duration: 1200 });
+  }, []);
+
+  const redo = useCallback(() => {
+    const next = future.current.pop();
+    if (!next) return;
+    past.current.push(manualsRef.current);
+    manualsRef.current = next;
+    setManuals(next);
+    toast("Refeito", { duration: 1200 });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const editable = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement | null)?.isContentEditable;
+      if (editable) return; // não interceptar quando digitando em inputs
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((key === "y") || (key === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo]);
+  // --------------------------------------------------------------
+
   const kmRange = useMemo(() => {
     const lo = Math.min(meta.startKm, meta.endKm);
     const hi = Math.max(meta.startKm, meta.endKm);
@@ -134,7 +216,7 @@ function ProjetoPage() {
       const { [id]: _, ...rest } = e;
       return rest;
     });
-    setManuals((arr) => arr.map((x) => (x.id === id ? { ...x, km: value } : x)));
+    commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, km: value } : x)));
   }
 
   // Restaurar do localStorage
@@ -146,7 +228,7 @@ function ProjetoPage() {
       setStart(saved.start);
       setEnd(saved.end);
       setPolyline(saved.polyline);
-      setManuals(saved.manuals);
+      replaceManuals(saved.manuals);
       setDescriptions(saved.descriptions);
     }
   }, [mounted]);
@@ -207,7 +289,7 @@ function ProjetoPage() {
       const km = nearestKm(polyline, cum, latlng);
       const absKm = meta.direction === "asc" ? meta.startKm + km : meta.startKm - km;
       const id = `m-${Date.now()}`;
-      setManuals((arr) => [...arr, { id, km: absKm, lat: latlng.lat, lng: latlng.lng, label: "ponto" }]);
+      commitManuals((arr) => [...arr, { id, km: absKm, lat: latlng.lat, lng: latlng.lng, label: "ponto" }]);
     }
   }
 
@@ -215,7 +297,7 @@ function ProjetoPage() {
     setStart(null);
     setEnd(null);
     setPolyline([]);
-    setManuals([]);
+    replaceManuals([]);
     setDescriptions({});
     setMode("start");
     setMeta((m) => ({ ...m, startKm: 0, endKm: 0 }));
@@ -278,7 +360,7 @@ function ProjetoPage() {
       });
 
       setDescriptions((d) => ({ ...d, ...descPatch }));
-      if (newManuals.length > 0) setManuals((arr) => [...arr, ...newManuals]);
+      if (newManuals.length > 0) commitManuals((arr) => [...arr, ...newManuals]);
 
       // Se não há rota, ajusta limites do projeto pelo que foi importado
       if (!hasRoute && Number.isFinite(minKm) && Number.isFinite(maxKm)) {
@@ -528,15 +610,12 @@ function ProjetoPage() {
                 mode={mode}
                 onClick={handleMapClick}
                 onUpdatePoint={(id, patch) =>
-                  setManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+                  commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                 }
-                onRemovePoint={(id) => setManuals((arr) => arr.filter((x) => x.id !== id))}
+                onRemovePoint={(id) => commitManuals((arr) => arr.filter((x) => x.id !== id))}
                 onMovePoint={(id, ll) => {
                   // Recalcula km a cada movimento, ancorando o pino ao traçado.
-                  // - Sem rota: aceita lat/lng livre.
-                  // - Com rota: snap ao ponto mais próximo da polyline e km
-                  //   computado a partir do início, respeitando asc/desc.
-                  setManuals((arr) =>
+                  liveManuals(id, (arr) =>
                     arr.map((x) => {
                       if (x.id !== id) return x;
                       if (polyline.length < 2) {
@@ -550,7 +629,6 @@ function ProjetoPage() {
                       return { ...x, lat: snap.lat, lng: snap.lng, km };
                     }),
                   );
-                  // Limpa qualquer erro de km pendente — o valor agora veio da rota.
                   setKmErrors((e) => {
                     if (!(id in e)) return e;
                     const { [id]: _, ...rest } = e;
@@ -562,6 +640,7 @@ function ProjetoPage() {
                     return rest;
                   });
                 }}
+                onMovePointEnd={endLive}
               />
             </Suspense>
 
@@ -597,14 +676,14 @@ function ProjetoPage() {
                           className="flex-1"
                           value={m.label}
                           onChange={(e) =>
-                            setManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, label: e.target.value } : x)))
+                            commitManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, label: e.target.value } : x)))
                           }
                         />
                         <Button
                           size="icon"
                           variant="ghost"
                           onClick={() => {
-                            setManuals((arr) => arr.filter((x) => x.id !== m.id));
+                            commitManuals((arr) => arr.filter((x) => x.id !== m.id));
                             setKmDrafts((d) => { const { [m.id]: _, ...rest } = d; return rest; });
                             setKmErrors((e) => { const { [m.id]: _, ...rest } = e; return rest; });
                           }}
@@ -682,7 +761,7 @@ function ProjetoPage() {
                           onChange={(e) => {
                             const v = e.target.value;
                             if (isManual && r.id) {
-                              setManuals((arr) => arr.map((x) => (x.id === r.id ? { ...x, label: v } : x)));
+                              commitManuals((arr) => arr.map((x) => (x.id === r.id ? { ...x, label: v } : x)));
                             } else {
                               setDescriptions((d) => ({ ...d, [`km-${r.km}`]: v }));
                             }
@@ -696,7 +775,7 @@ function ProjetoPage() {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7"
-                            onClick={() => setManuals((arr) => arr.filter((x) => x.id !== r.id))}
+                            onClick={() => commitManuals((arr) => arr.filter((x) => x.id !== r.id))}
                             title="Remover ponto manual"
                           >
                             <Trash2 className="h-4 w-4" />
