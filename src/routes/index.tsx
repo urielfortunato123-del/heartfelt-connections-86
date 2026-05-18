@@ -9,12 +9,9 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Speedometer } from "@/components/Speedometer";
 import {
   DISTANCE_UNITS,
-  derToKm,
   formatDer,
   formatKm,
   formatNumber,
-  kmToDer,
-  kmToHectometros,
   toEditableString,
 } from "@/lib/converters/distance";
 
@@ -46,6 +43,9 @@ function loadHistory(): HistoryEntry[] {
 }
 
 function Particles() {
+  // Só renderiza no client — evita mismatch de hidratação por Math.random no SSR.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const dots = useMemo(
     () =>
       Array.from({ length: 40 }).map(() => ({
@@ -56,6 +56,7 @@ function Particles() {
       })),
     [],
   );
+  if (!mounted) return null;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       {dots.map((p, i) => (
@@ -90,10 +91,65 @@ function formatTravelTime(hours: number): string {
   return `${days}d ${remHours}h`;
 }
 
+type DerDirection = "asc" | "desc";
+
+const DER_PREFS_KEY = "kmcp.der.prefs.v1";
+
+function loadDerPrefs(): { kmBase: number; direction: DerDirection } {
+  if (typeof window === "undefined") return { kmBase: 0, direction: "asc" };
+  try {
+    const raw = localStorage.getItem(DER_PREFS_KEY);
+    if (!raw) return { kmBase: 0, direction: "asc" };
+    const p = JSON.parse(raw) as { kmBase?: number; direction?: DerDirection };
+    return {
+      kmBase: Number.isFinite(p.kmBase) ? Math.max(0, p.kmBase!) : 0,
+      direction: p.direction === "desc" ? "desc" : "asc",
+    };
+  } catch {
+    return { kmBase: 0, direction: "asc" };
+  }
+}
+
 function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
-  const der = kmToDer(km);
-  const hm = kmToHectometros(km);
-  const meters = km * 1000;
+  const [prefs, setPrefs] = useState<{ kmBase: number; direction: DerDirection }>(
+    () => loadDerPrefs(),
+  );
+  const { kmBase, direction } = prefs;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DER_PREFS_KEY, JSON.stringify(prefs));
+    } catch {
+      /* noop */
+    }
+  }, [prefs]);
+
+  // Estaca relativa ao km base, respeitando o sentido.
+  const offsetMeters = Math.max(
+    0,
+    Math.round((direction === "asc" ? km - kmBase : kmBase - km) * 1000),
+  );
+  const der = {
+    estacas: Math.floor(offsetMeters / 20),
+    extra: Math.round((offsetMeters - Math.floor(offsetMeters / 20) * 20) * 100) / 100,
+  };
+  const hm = offsetMeters / 100;
+  const meters = offsetMeters;
+
+  // Aplica estaca+excedente → km absoluto, respeitando base e sentido.
+  const applyEstaca = (estacas: number, extra: number) => {
+    const e = Number.isFinite(estacas) ? Math.max(0, Math.floor(estacas)) : 0;
+    const x = Number.isFinite(extra) ? Math.max(0, Math.min(19.99, extra)) : 0;
+    const meters = e * 20 + x;
+    const km = direction === "asc" ? kmBase + meters / 1000 : kmBase - meters / 1000;
+    setKm(Math.max(0, km));
+  };
+  const applyHm = (hmValue: number) => {
+    const v = Number.isFinite(hmValue) ? Math.max(0, hmValue) : 0;
+    const km = direction === "asc" ? kmBase + v / 10 : kmBase - v / 10;
+    setKm(Math.max(0, km));
+  };
+
   return (
     <section
       aria-label="Conversão DER · Estaca e Hectômetro"
@@ -104,6 +160,67 @@ function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
         <span className="text-fuchsia-300">DER · ESTACA / HECTÔMETRO</span>
         <span className="text-white/30">PADRÃO BRASILEIRO</span>
       </div>
+
+      {/* Trecho: km base + sentido */}
+      <div className="mb-3 grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <label
+            htmlFor="der-base"
+            className="block font-mono text-[10px] tracking-[0.25em] text-white/40"
+          >
+            KM INICIAL <span className="text-white/30">(Estaca 0)</span>
+          </label>
+          <div className="mt-1 flex items-end gap-2">
+            <input
+              id="der-base"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={0.001}
+              aria-label="Km da Estaca 0 (offset do trecho)"
+              value={toEditableString(kmBase)}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setPrefs((p) => ({ ...p, kmBase: Number.isFinite(v) ? Math.max(0, v) : 0 }));
+              }}
+              className="w-full rounded bg-transparent text-2xl font-light text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
+              placeholder="0"
+            />
+            <span className="pb-1 font-mono text-[10px] tracking-[0.3em] text-fuchsia-300">KM</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <div className="font-mono text-[10px] tracking-[0.25em] text-white/40">
+            SENTIDO DO ESTAQUEAMENTO
+          </div>
+          <div
+            role="radiogroup"
+            aria-label="Sentido do estaqueamento"
+            className="mt-2 flex gap-2"
+          >
+            {(["asc", "desc"] as const).map((d) => {
+              const active = direction === d;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setPrefs((p) => ({ ...p, direction: d }))}
+                  className={`flex-1 rounded-lg border px-3 py-2 font-mono text-[10px] tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60 ${
+                    active
+                      ? "border-fuchsia-400/70 bg-fuchsia-400/10 text-fuchsia-200"
+                      : "border-white/10 bg-white/[0.02] text-white/60 hover:border-white/30 hover:text-white"
+                  }`}
+                >
+                  {d === "asc" ? "↑ CRESCENTE (+KM)" : "↓ DECRESCENTE (−KM)"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
           <label
@@ -123,7 +240,7 @@ function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
               value={der.estacas}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
-                setKm(derToKm(Number.isFinite(v) ? v : 0, der.extra));
+                applyEstaca(Number.isFinite(v) ? v : 0, der.extra);
               }}
               className="w-full rounded bg-transparent text-2xl font-light text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
               placeholder="0"
@@ -150,7 +267,7 @@ function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
               value={der.extra}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
-                setKm(derToKm(der.estacas, Number.isFinite(v) ? v : 0));
+                applyEstaca(der.estacas, Number.isFinite(v) ? v : 0);
               }}
               className="w-full rounded bg-transparent text-2xl font-light text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
               placeholder="0"
@@ -176,7 +293,7 @@ function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
               value={toEditableString(hm)}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
-                setKm(Number.isFinite(v) ? v / 10 : 0);
+                applyHm(Number.isFinite(v) ? v : 0);
               }}
               className="w-full rounded bg-transparent text-2xl font-light text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
               placeholder="0"
@@ -189,6 +306,9 @@ function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
         <span>
           NOTAÇÃO:{" "}
           <span className="text-fuchsia-300">Estaca {formatDer(der)}</span>
+          <span className="ml-2 text-white/30">
+            (base {formatKm(kmBase)} km, {direction === "asc" ? "↑" : "↓"})
+          </span>
         </span>
         <span>
           = <span className="text-white">{formatNumber(meters)} m</span> ·{" "}
