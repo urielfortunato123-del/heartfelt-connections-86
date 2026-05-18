@@ -527,7 +527,18 @@ function ProjetoPage() {
               <div className="space-y-2">
                 {manuals.map((m) => (
                   <div key={m.id} className="flex items-center gap-2">
-                    <span className="w-24 text-xs text-cyan-300">km {formatKm(m.km)}</span>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      className="w-24 font-mono text-xs"
+                      value={m.km}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        if (!Number.isFinite(v)) return;
+                        setManuals((arr) => arr.map((x) => (x.id === m.id ? { ...x, km: v } : x)));
+                      }}
+                      title="km do ponto"
+                    />
                     <Input
                       className="flex-1"
                       value={m.label}
@@ -539,6 +550,7 @@ function ProjetoPage() {
                       size="icon"
                       variant="ghost"
                       onClick={() => setManuals((arr) => arr.filter((x) => x.id !== m.id))}
+                      title="Remover ponto manual"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
