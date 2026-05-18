@@ -454,7 +454,18 @@ function ProjetoPage() {
             <Button size="sm" variant="secondary" onClick={() => exportPdfPlacas(meta, rows, "single", kmFormat)} disabled={rows.length === 0}>
               <FileText className="mr-1 h-4 w-4" /> PDF placas
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => exportPdfPlacas(meta, rows, "grid", kmFormat)} disabled={rows.length === 0}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                const blob = exportPdfPlacas(meta, rows, "grid", kmFormat, bothLayout, "blob") as Blob | undefined;
+                if (blob) {
+                  setPreviewBlob(blob);
+                  setPreviewOpen(true);
+                }
+              }}
+              disabled={rows.length === 0}
+            >
               <FileText className="mr-1 h-4 w-4" /> PDF placas (grid)
             </Button>
             <Button size="sm" onClick={() => exportPdfPlacas(meta, rows, "both", kmFormat, bothLayout)} disabled={rows.length === 0}>
