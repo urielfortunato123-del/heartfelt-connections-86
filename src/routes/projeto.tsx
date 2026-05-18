@@ -804,6 +804,13 @@ function ProjetoPage() {
           </div>
         </section>
       </main>
+      <PdfPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        blob={previewBlob}
+        filename={`${(meta.name || "projeto").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-placas-grid.pdf`}
+        title="Pré-visualização — PDF placas (grid)"
+      />
     </div>
   );
 }
