@@ -562,7 +562,6 @@ function ProjetoPage() {
                     return rest;
                   });
                 }}
-                }}
               />
             </Suspense>
 
