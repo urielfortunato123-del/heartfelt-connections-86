@@ -25,8 +25,10 @@ import {
   exportPdfPlacas,
   exportPdfTable,
   importSpreadsheet,
+  type KmLabelFormat,
   type ProjectMeta,
 } from "@/lib/projeto/export";
+
 
 
 const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
