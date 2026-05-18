@@ -560,6 +560,7 @@ export function exportPdfPlacas(
     doc.text(`${idx + 1} / ${rows.length}`, W - 14, H - 8, { align: "right" });
   });
 
+  if (outputMode === "blob") return doc.output("blob");
   doc.save(
     `${slug(meta.name)}-placas${mode === "both" ? "-dois-lados" : ""}.pdf`,
   );
