@@ -480,9 +480,29 @@ function Index() {
                       <label htmlFor="m-slider" className="text-fuchsia-300">
                         + METROS · PRECISÃO FINA
                       </label>
-                      <span className="text-white">
-                        {meters.toString().padStart(4, "0")} m
-                      </span>
+                      <div className="flex items-center gap-1.5 text-white">
+                        <input
+                          id="m-input"
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={1000}
+                          step={1}
+                          aria-label="Metros adicionais (0 a 1000)"
+                          value={meters}
+                          onChange={(e) => {
+                            const raw = parseInt(e.target.value, 10);
+                            const m = Number.isFinite(raw) ? Math.max(0, Math.min(1000, raw)) : 0;
+                            const nextKm =
+                              m >= 1000
+                                ? Math.min(wholeKm + 1, MAX_RANGE)
+                                : wholeKm + m / 1000;
+                            setKm(Math.round(nextKm * 1000) / 1000);
+                          }}
+                          className="w-16 rounded bg-black/40 px-2 py-1 text-right font-mono text-xs tabular-nums text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
+                        />
+                        <span className="text-white/40">m</span>
+                      </div>
                     </div>
                     <input
                       id="m-slider"
