@@ -535,6 +535,11 @@ function Index() {
                           m >= 1000 ? Math.min(wholeKm + 1, MAX_RANGE) : wholeKm + m / 1000;
                         setKm(Math.round(nextKm * 1000) / 1000);
                       }}
+                      onPointerUp={() => commitUrl(km)}
+                      onKeyUp={(e) => {
+                        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Home","End","PageUp","PageDown"].includes(e.key))
+                          commitUrl(km);
+                      }}
                       className="mt-2 w-full rounded-full accent-fuchsia-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
                       style={{ accentColor: "#d946ef" }}
                     />
