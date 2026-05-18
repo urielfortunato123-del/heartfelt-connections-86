@@ -56,9 +56,18 @@ export function kmToDer(km: number): DerStake {
   return { estacas, extra: Math.round(extra * 10000) / 10000 };
 }
 
+export const MAX_EXTRA_METERS = 19.99;
+
+/** Clamp metros excedentes ao intervalo [0, 19.99] com 2 casas decimais. */
+export function clampExtra(extra: number): number {
+  if (!Number.isFinite(extra) || extra < 0) return 0;
+  const capped = Math.min(extra, MAX_EXTRA_METERS);
+  return Math.round(capped * 100) / 100;
+}
+
 export function derToKm(estacas: number, extra: number): number {
   const e = Number.isFinite(estacas) ? Math.max(0, Math.floor(estacas)) : 0;
-  const x = Number.isFinite(extra) ? Math.max(0, extra) : 0;
+  const x = clampExtra(extra);
   return (e * METERS_PER_ESTACA + x) / 1000;
 }
 
