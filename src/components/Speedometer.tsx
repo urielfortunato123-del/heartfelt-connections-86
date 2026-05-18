@@ -15,8 +15,9 @@ const RADIUS = 110;
 const START = Math.PI * 0.75; // 135deg
 const END = Math.PI * 2.25; // 405deg => 270deg sweep
 
+const round = (n: number) => Math.round(n * 1000) / 1000;
 function polar(angle: number, r: number) {
-  return { x: CENTER + Math.cos(angle) * r, y: CENTER + Math.sin(angle) * r };
+  return { x: round(CENTER + Math.cos(angle) * r), y: round(CENTER + Math.sin(angle) * r) };
 }
 
 function arcPath(r: number, from: number, to: number) {
