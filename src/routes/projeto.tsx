@@ -264,14 +264,18 @@ function ProjetoPage() {
 
 
   // Linhas finais para tabela/export
-  const rows = useMemo(() => {
-    const auto = kmMarkers.map((m) => ({
+  type UiRow = { km: number; descricao: string; kind: "auto" | "manual"; id?: string };
+  const rows = useMemo<UiRow[]>(() => {
+    const auto: UiRow[] = kmMarkers.map((m) => ({
       km: m.km,
       descricao: descriptions[`km-${m.km}`] ?? "",
+      kind: "auto",
     }));
-    const manualRows = manuals.map((m) => ({
+    const manualRows: UiRow[] = manuals.map((m) => ({
       km: m.km,
       descricao: m.label,
+      kind: "manual",
+      id: m.id,
     }));
     return [...auto, ...manualRows].sort((a, b) =>
       meta.direction === "asc" ? a.km - b.km : b.km - a.km,
