@@ -368,7 +368,7 @@ export function exportPdfPlacas(
     rows.forEach((r, idx) => {
       const slot = idx % perPage;
       if (slot === 0) {
-        if (idx > 0) doc.addPage();
+        doc.addPage();
         // Fundo + header da página
         doc.setFillColor(15, 23, 42);
         doc.rect(0, 0, W, H, "F");
