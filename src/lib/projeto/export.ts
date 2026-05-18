@@ -416,7 +416,7 @@ export function exportPdfPlacas(
   const mirror = (km: number) => meta.startKm + meta.endKm - km;
 
   rows.forEach((r, idx) => {
-    if (idx > 0) doc.addPage();
+    doc.addPage();
 
     // Fundo
     doc.setFillColor(15, 23, 42);
