@@ -125,6 +125,48 @@ export function exportCsv(meta: ProjectMeta, rows: Row[]) {
   download(`${slug(meta.name)}-estaqueamento.csv`, csv, "text/csv;charset=utf-8");
 }
 
+function buildLadosRows(meta: ProjectMeta, rows: Row[]): Record<string, string | number>[] {
+  const mirror = (km: number) => meta.startKm + meta.endKm - km;
+  const projectIsAsc = meta.direction === "asc";
+  return rows.map((r) => {
+    const der = kmToDer(Math.abs(r.km));
+    const rightKm = r.km;
+    const leftKm = mirror(r.km);
+    return {
+      "Estaca": der.estacas,
+      "Excedente (m)": Number(der.extra.toFixed(2)),
+      "Km lado direito": formatKm(Math.abs(rightKm)),
+      "Km lado direito (sentido)": projectIsAsc ? "Crescente" : "Decrescente",
+      "Km lado esquerdo": formatKm(Math.abs(leftKm)),
+      "Km lado esquerdo (sentido)": projectIsAsc ? "Decrescente" : "Crescente",
+      "Descrição": r.descricao || "",
+    };
+  });
+}
+
+export function exportPlacasLadosExcel(meta: ProjectMeta, rows: Row[]) {
+  const data = buildLadosRows(meta, rows);
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Placas por estaca");
+  const metaWs = XLSX.utils.json_to_sheet([
+    { Campo: "Rodovia", Valor: meta.name },
+    { Campo: "Sentido do projeto", Valor: meta.direction === "asc" ? "Crescente" : "Decrescente" },
+    { Campo: "Km inicial", Valor: meta.startKm },
+    { Campo: "Km final", Valor: meta.endKm },
+    { Campo: "Passo (km)", Valor: meta.step },
+  ]);
+  XLSX.utils.book_append_sheet(wb, metaWs, "Projeto");
+  XLSX.writeFile(wb, `${slug(meta.name)}-placas-lados.xlsx`);
+}
+
+export function exportPlacasLadosCsv(meta: ProjectMeta, rows: Row[]) {
+  const data = buildLadosRows(meta, rows);
+  const ws = XLSX.utils.json_to_sheet(data);
+  const csv = XLSX.utils.sheet_to_csv(ws);
+  download(`${slug(meta.name)}-placas-lados.csv`, csv, "text/csv;charset=utf-8");
+}
+
 export function exportPdfTable(meta: ProjectMeta, rows: Row[]) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   doc.setFontSize(14);
