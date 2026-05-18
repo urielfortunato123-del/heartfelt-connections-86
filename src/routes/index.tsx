@@ -210,6 +210,9 @@ function Index() {
   );
   const km = totalMeters / 1000;
   const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory());
+  // Rascunho do input de metros — permite digitar vazio sem perder foco,
+  // com validação visual em tempo real (0–1000).
+  const [metersDraft, setMetersDraft] = useState<string | null>(null);
 
   // setKm aceita km (float) e converte para inteiro de metros — single source of truth.
   const setKm = useCallback((next: number) => {
@@ -500,25 +503,70 @@ function Index() {
                         + METROS · PRECISÃO FINA
                       </label>
                       <div className="flex items-center gap-1.5 text-white">
-                        <input
-                          id="m-input"
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          max={1000}
-                          step={1}
-                          aria-label="Metros adicionais (0 a 1000)"
-                          value={meters}
-                          onChange={(e) => {
-                            const raw = parseInt(e.target.value, 10);
-                            const m = Number.isFinite(raw) ? Math.max(0, Math.min(1000, raw)) : 0;
-                            // 1000 m rola para o próximo km automaticamente.
-                            const next = m >= 1000 ? (wholeKm + 1) * 1000 : wholeKm * 1000 + m;
-                            setTotalMeters(Math.min(MAX_RANGE * 1000, next));
-                          }}
-                          onBlur={() => commitUrl(km)}
-                          className="w-16 rounded bg-black/40 px-2 py-1 text-right font-mono text-xs tabular-nums text-white outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400/60"
-                        />
+                        {(() => {
+                          const draftNum =
+                            metersDraft === null || metersDraft === ""
+                              ? NaN
+                              : Number(metersDraft);
+                          const invalid =
+                            metersDraft !== null &&
+                            metersDraft !== "" &&
+                            (!Number.isFinite(draftNum) ||
+                              draftNum < 0 ||
+                              draftNum > 1000 ||
+                              !/^\d+$/.test(metersDraft));
+                          const displayValue =
+                            metersDraft !== null ? metersDraft : String(meters);
+                          return (
+                            <input
+                              id="m-input"
+                              type="number"
+                              inputMode="numeric"
+                              min={0}
+                              max={1000}
+                              step={1}
+                              aria-label="Metros adicionais (0 a 1000)"
+                              aria-invalid={invalid}
+                              value={displayValue}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setMetersDraft(v);
+                                // Aplica somente se for inteiro válido dentro do range.
+                                if (v === "" || !/^\d+$/.test(v)) return;
+                                const n = Number(v);
+                                if (!Number.isFinite(n) || n < 0 || n > 1000) return;
+                                const next =
+                                  n >= 1000 ? (wholeKm + 1) * 1000 : wholeKm * 1000 + n;
+                                setTotalMeters(Math.min(MAX_RANGE * 1000, next));
+                              }}
+                              onBlur={() => {
+                                // Ao sair, normaliza: vazio/ inválido vira valor clampeado.
+                                const n = Number(metersDraft);
+                                if (
+                                  metersDraft === null ||
+                                  metersDraft === "" ||
+                                  !Number.isFinite(n)
+                                ) {
+                                  setTotalMeters(wholeKm * 1000);
+                                } else {
+                                  const clamped = Math.max(0, Math.min(1000, Math.round(n)));
+                                  const next =
+                                    clamped >= 1000
+                                      ? (wholeKm + 1) * 1000
+                                      : wholeKm * 1000 + clamped;
+                                  setTotalMeters(Math.min(MAX_RANGE * 1000, next));
+                                }
+                                setMetersDraft(null);
+                                commitUrl(km);
+                              }}
+                              className={`w-16 rounded bg-black/40 px-2 py-1 text-right font-mono text-xs tabular-nums text-white outline-none focus-visible:ring-2 ${
+                                invalid
+                                  ? "ring-2 ring-red-500/70 focus-visible:ring-red-500/70"
+                                  : "focus-visible:ring-fuchsia-400/60"
+                              }`}
+                            />
+                          );
+                        })()}
                         <span className="text-white/40">m</span>
                       </div>
                     </div>
