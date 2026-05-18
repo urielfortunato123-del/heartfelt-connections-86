@@ -216,7 +216,7 @@ function ProjetoPage() {
       const { [id]: _, ...rest } = e;
       return rest;
     });
-    setManuals((arr) => arr.map((x) => (x.id === id ? { ...x, km: value } : x)));
+    commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, km: value } : x)));
   }
 
   // Restaurar do localStorage
