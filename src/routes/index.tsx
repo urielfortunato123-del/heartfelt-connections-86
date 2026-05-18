@@ -222,7 +222,20 @@ function Index() {
         url.searchParams.delete("km");
       }
       if (url.toString() !== window.location.href) {
+        // Preserva a posição de scroll: alguns hosts/iframes disparam
+        // scroll-to-top após replaceState. Capturamos antes e restauramos
+        // em seguida (incluindo um rAF para vencer qualquer scroll-restore).
+        const x = window.scrollX;
+        const y = window.scrollY;
         window.history.replaceState(null, "", url.toString());
+        if (window.scrollX !== x || window.scrollY !== y) {
+          window.scrollTo(x, y);
+        }
+        requestAnimationFrame(() => {
+          if (window.scrollX !== x || window.scrollY !== y) {
+            window.scrollTo(x, y);
+          }
+        });
       }
     }, 400);
     return () => window.clearTimeout(t);
