@@ -177,6 +177,83 @@ function ProjetoPage() {
     setMeta((m) => ({ ...m, startKm: 0, endKm: 0 }));
   }
 
+  async function handleImport(file: File | null) {
+    if (!file) return;
+    try {
+      const imported = await importSpreadsheet(file);
+      if (imported.length === 0) {
+        toast.error("Nenhuma linha válida encontrada. Verifique colunas: km, estaca, excedente, descrição.");
+        return;
+      }
+
+      // Adapta km à direção do projeto (planilha é tratada como absoluta).
+      const descPatch: Record<string, string> = {};
+      const newManuals: Manual[] = [];
+      const hasRoute = polyline.length >= 2;
+      const autoKmSet = new Set(kmMarkers.map((m) => Number(m.km.toFixed(3))));
+
+      // Importa ajustando startKm/endKm se vier além dos limites
+      let minKm = Infinity;
+      let maxKm = -Infinity;
+
+      imported.forEach((row, i) => {
+        const km = row.km;
+        if (km < minKm) minKm = km;
+        if (km > maxKm) maxKm = km;
+        descPatch[`km-${km}`] = row.descricao;
+
+        // Se NÃO bater com a grade automática, vira ponto manual
+        const rounded = Number(km.toFixed(3));
+        if (!autoKmSet.has(rounded) && row.descricao) {
+          let lat = 0;
+          let lng = 0;
+          if (hasRoute) {
+            // interpola posição na rota a partir do km relativo
+            const rel = meta.direction === "asc" ? km - meta.startKm : meta.startKm - km;
+            // pequeno helper inline: pega ponto mais próximo do cum
+            let bestIdx = 0;
+            let bestDiff = Infinity;
+            for (let j = 0; j < cum.length; j++) {
+              const d = Math.abs(cum[j] - rel);
+              if (d < bestDiff) {
+                bestDiff = d;
+                bestIdx = j;
+              }
+            }
+            lat = polyline[bestIdx]?.[0] ?? 0;
+            lng = polyline[bestIdx]?.[1] ?? 0;
+          }
+          newManuals.push({
+            id: `imp-${Date.now()}-${i}`,
+            km,
+            lat,
+            lng,
+            label: row.descricao,
+          });
+        }
+      });
+
+      setDescriptions((d) => ({ ...d, ...descPatch }));
+      if (newManuals.length > 0) setManuals((arr) => [...arr, ...newManuals]);
+
+      // Se não há rota, ajusta limites do projeto pelo que foi importado
+      if (!hasRoute && Number.isFinite(minKm) && Number.isFinite(maxKm)) {
+        setMeta((m) => ({
+          ...m,
+          startKm: Math.min(m.startKm, minKm),
+          endKm: Math.max(m.endKm, maxKm),
+        }));
+      }
+
+      toast.success(
+        `${imported.length} linha(s) importada(s). ${newManuals.length} viraram pontos manuais.`,
+      );
+    } catch (err) {
+      toast.error(`Falha ao importar: ${(err as Error).message}`);
+    }
+  }
+
+
   // Linhas finais para tabela/export
   const rows = useMemo(() => {
     const auto = kmMarkers.map((m) => ({
