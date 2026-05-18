@@ -696,7 +696,7 @@ function Index() {
                 <div>
                   <div className="text-white/30">DIST</div>
                   <div className="mt-1 text-white">
-                    <AnimatedNumber value={km} /> km
+                    <AnimatedNumber value={km} format={formatKm} /> km
                   </div>
                 </div>
                 <div>
