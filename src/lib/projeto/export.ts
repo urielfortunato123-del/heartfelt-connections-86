@@ -449,6 +449,7 @@ export function exportPdfPlacas(
       });
     });
 
+    if (outputMode === "blob") return doc.output("blob");
     doc.save(`${slug(meta.name)}-placas-grid.pdf`);
     return;
   }
