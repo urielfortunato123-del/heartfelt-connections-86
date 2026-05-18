@@ -38,7 +38,11 @@ type Props = {
   manualPoints: ManualPoint[];
   mode: Mode;
   onClick: (latlng: LatLng) => void;
+  onUpdatePoint?: (id: string, patch: Partial<Pick<ManualPoint, "km" | "label">>) => void;
+  onRemovePoint?: (id: string) => void;
+  onMovePoint?: (id: string, latlng: LatLng) => void;
 };
+
 
 function ClickCatcher({ onClick }: { onClick: (l: LatLng) => void }) {
   useMapEvents({
