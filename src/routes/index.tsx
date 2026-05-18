@@ -164,37 +164,57 @@ function Index() {
                   "0 0 0 1px rgba(255,255,255,.04), 0 30px 80px -20px rgba(34,211,238,.25), 0 30px 80px -20px rgba(168,85,247,.25)",
               }}
             >
-              <div className="mb-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
+              <label
+                htmlFor="km-input"
+                className="mb-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40"
+              >
                 <span>INPUT · KILOMETERS</span>
-                <span className="flex items-center gap-1.5 text-cyan-300">
+                <span className="flex items-center gap-1.5 text-cyan-300" aria-hidden="true">
                   <Gauge className="h-3 w-3" /> LIVE
                 </span>
-              </div>
+              </label>
 
               <div className="flex items-end gap-3">
                 <input
+                  id="km-input"
                   type="number"
+                  inputMode="decimal"
+                  min={0}
+                  aria-label="Distance in kilometers"
                   value={Number.isFinite(km) ? km : ""}
                   onChange={(e) => setKm(parseFloat(e.target.value))}
-                  className="w-full bg-transparent text-5xl font-light tracking-tight text-white outline-none placeholder:text-white/20 md:text-6xl"
+                  className="w-full bg-transparent text-5xl font-light tracking-tight text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60 rounded-md md:text-6xl"
                   placeholder="0"
                 />
-                <span className="pb-2 font-mono text-sm tracking-[0.3em] text-cyan-300">
+                <span className="pb-2 font-mono text-sm tracking-[0.3em] text-cyan-300" aria-hidden="true">
                   KM
                 </span>
               </div>
 
+              <label htmlFor="km-slider" className="sr-only">
+                Adjust kilometers with slider, range 0 to 1000
+              </label>
               <input
+                id="km-slider"
                 type="range"
                 min={0}
                 max={1000}
                 step={1}
+                aria-label="Kilometers slider"
+                aria-valuemin={0}
+                aria-valuemax={1000}
+                aria-valuenow={Number.isFinite(km) ? Math.min(km, 1000) : 0}
+                aria-valuetext={`${Number.isFinite(km) ? km : 0} kilometers`}
                 value={Number.isFinite(km) ? Math.min(km, 1000) : 0}
                 onChange={(e) => setKm(parseFloat(e.target.value))}
-                className="mt-6 w-full accent-cyan-400"
+                className="mt-6 w-full accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 rounded-full"
               />
 
-              <div className="mt-6 flex flex-wrap gap-2">
+              <div
+                role="group"
+                aria-label="Quick distance presets"
+                className="mt-6 flex flex-wrap gap-2"
+              >
                 {[1, 5, 10, 100, 1000].map((preset) => {
                   const active = km === preset;
                   return (
@@ -202,9 +222,11 @@ function Index() {
                       key={preset}
                       type="button"
                       onClick={() => setKm(preset)}
+                      aria-pressed={active}
+                      aria-label={`Set distance to ${preset} kilometers`}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`rounded-full border px-4 py-1.5 font-mono text-xs tracking-[0.2em] transition-colors ${
+                      className={`rounded-full border px-4 py-1.5 font-mono text-xs tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 ${
                         active
                           ? "border-cyan-400/70 bg-cyan-400/10 text-cyan-200"
                           : "border-white/10 bg-white/[0.03] text-white/60 hover:border-white/30 hover:text-white"
@@ -221,9 +243,11 @@ function Index() {
                 })}
               </div>
 
-              <div className="mt-4 font-mono text-[10px] tracking-[0.3em] text-white/30">
+              <p className="mt-4 font-mono text-[10px] tracking-[0.3em] text-white/30">
                 ↔ EDIT ANY FIELD · BIDIRECTIONAL
-              </div>
+              </p>
+
+
 
 
               <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -255,6 +279,8 @@ function Index() {
                       </div>
                       <input
                         type="number"
+                        inputMode="decimal"
+                        aria-label={`Distance in ${u.label}`}
                         value={display}
                         onChange={(e) => {
                           const v = parseFloat(e.target.value);
@@ -264,7 +290,7 @@ function Index() {
                           }
                           setKm(v / u.factor);
                         }}
-                        className="mt-2 w-full truncate bg-transparent text-xl font-medium text-white outline-none placeholder:text-white/20"
+                        className="mt-2 w-full truncate rounded bg-transparent text-xl font-medium text-white outline-none placeholder:text-white/20 focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                         placeholder="0"
                       />
                     </motion.label>
