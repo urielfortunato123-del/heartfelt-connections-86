@@ -366,12 +366,12 @@ export function exportPdfPlacas(
     ).toFixed(2)} hm`;
 
     if (mode === "both") {
-      const plateW = 130;
-      const plateH = 140;
-      const gap = 17;
+      const { plateW, plateH, gap, marginTop, marginX } = bothLayout;
       const totalW = plateW * 2 + gap;
-      const startX = (W - totalW) / 2;
-      const plateY = 45;
+      const startX = marginX > 0 ? marginX : (W - totalW) / 2;
+      const plateY = marginTop;
+
+
 
       // Lado esquerdo da pista: sentido DECRESCENTE → km espelhado
       const leftKm = mirror(r.km);
