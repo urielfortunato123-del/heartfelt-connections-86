@@ -610,15 +610,12 @@ function ProjetoPage() {
                 mode={mode}
                 onClick={handleMapClick}
                 onUpdatePoint={(id, patch) =>
-                  setManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+                  commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                 }
-                onRemovePoint={(id) => setManuals((arr) => arr.filter((x) => x.id !== id))}
+                onRemovePoint={(id) => commitManuals((arr) => arr.filter((x) => x.id !== id))}
                 onMovePoint={(id, ll) => {
                   // Recalcula km a cada movimento, ancorando o pino ao traçado.
-                  // - Sem rota: aceita lat/lng livre.
-                  // - Com rota: snap ao ponto mais próximo da polyline e km
-                  //   computado a partir do início, respeitando asc/desc.
-                  setManuals((arr) =>
+                  liveManuals(id, (arr) =>
                     arr.map((x) => {
                       if (x.id !== id) return x;
                       if (polyline.length < 2) {
@@ -632,7 +629,6 @@ function ProjetoPage() {
                       return { ...x, lat: snap.lat, lng: snap.lng, km };
                     }),
                   );
-                  // Limpa qualquer erro de km pendente — o valor agora veio da rota.
                   setKmErrors((e) => {
                     if (!(id in e)) return e;
                     const { [id]: _, ...rest } = e;
@@ -644,6 +640,7 @@ function ProjetoPage() {
                     return rest;
                   });
                 }}
+                onMovePointEnd={endLive}
               />
             </Suspense>
 
