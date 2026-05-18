@@ -250,7 +250,9 @@ export function exportPdfPlacas(
   meta: ProjectMeta,
   rows: Row[],
   mode: PlateSide = "single",
+  kmFormat: KmLabelFormat = "decimal3",
 ) {
+
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const W = 297;
   const H = 210;
