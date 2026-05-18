@@ -246,12 +246,30 @@ function drawPlate(
  * - mode "grid":   várias placas por página (3 colunas × 4 linhas = 12 por A4 paisagem),
  *                  consolidado para impressão econômica.
  */
+export type BothLayout = {
+  plateW: number;      // largura de cada placa (mm)
+  plateH: number;      // altura de cada placa (mm)
+  gap: number;         // espaçamento horizontal entre as placas (mm)
+  marginTop: number;   // distância do topo até as placas (mm)
+  marginX: number;     // margem lateral mínima (mm); se 0, as placas são centralizadas
+};
+
+export const DEFAULT_BOTH_LAYOUT: BothLayout = {
+  plateW: 130,
+  plateH: 140,
+  gap: 17,
+  marginTop: 45,
+  marginX: 0,
+};
+
 export function exportPdfPlacas(
   meta: ProjectMeta,
   rows: Row[],
   mode: PlateSide = "single",
   kmFormat: KmLabelFormat = "decimal3",
+  bothLayout: BothLayout = DEFAULT_BOTH_LAYOUT,
 ) {
+
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const W = 297;
