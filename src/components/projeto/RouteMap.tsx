@@ -484,6 +484,13 @@ export default function RouteMap({
     storageKeyRef.current = storageKey;
     const map = mapRef.current;
     if (!map) return;
+    // Sincroniza camada base + overlays a partir do que foi salvo p/ esse contexto.
+    let saved: SavedView | null = null;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) saved = JSON.parse(raw) as SavedView;
+    } catch { /* ignore */ }
+    syncVisuals(saved?.baseLayer, saved?.overlays);
     const applied = applySavedView(storageKey);
     if (!applied) {
       userInteractedRef.current = false;
@@ -495,7 +502,7 @@ export default function RouteMap({
         map.setView([start.lat, start.lng], 11, { animate: false });
       }
     }
-  }, [storageKey, polyline, start, applySavedView]);
+  }, [storageKey, polyline, start, applySavedView, syncVisuals]);
 
   // Retorno da aba/janela: reaplica a última view salva e revalida tiles sem flicker.
   useEffect(() => {
