@@ -281,6 +281,33 @@ export default function RouteMap({
     };
   }, []);
 
+  // Aplica a view persistida da chave atual; se não houver, faz fitBounds/default.
+  // Usa animate:false para evitar flicker visual ao rehidratar.
+  const applySavedView = useCallback(
+    (key: string) => {
+      const map = mapRef.current;
+      if (!map) return;
+      try {
+        const raw = window.localStorage.getItem(key);
+        if (raw) {
+          const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
+          if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
+            const c = map.getCenter();
+            const z = map.getZoom();
+            if (Math.abs(c.lat - v.lat) > 1e-7 || Math.abs(c.lng - v.lng) > 1e-7 || z !== v.zoom) {
+              map.setView([v.lat, v.lng], v.zoom, { animate: false });
+            }
+            userInteractedRef.current = true;
+            map.invalidateSize({ animate: false });
+            return true;
+          }
+        }
+      } catch { /* ignore */ }
+      return false;
+    },
+    [],
+  );
+
   // Quando a chave de contexto muda (projeto/filtros diferentes), troca a sub-chave
   // de persistência e reaplica a view salva para esse contexto (ou refaz fitBounds).
   useEffect(() => {
@@ -288,29 +315,36 @@ export default function RouteMap({
     storageKeyRef.current = storageKey;
     const map = mapRef.current;
     if (!map) return;
-    let applied = false;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (raw) {
-        const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
-        if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
-          map.setView([v.lat, v.lng], v.zoom);
-          userInteractedRef.current = true;
-          applied = true;
-        }
-      }
-    } catch { /* ignore */ }
+    const applied = applySavedView(storageKey);
     if (!applied) {
       userInteractedRef.current = false;
       polylineSignatureRef.current = "";
       if (polyline.length > 1) {
         const bounds = L.latLngBounds(polyline.map(([a, b]) => L.latLng(a, b)));
-        map.fitBounds(bounds, { padding: [30, 30] });
+        map.fitBounds(bounds, { padding: [30, 30], animate: false });
       } else if (start) {
-        map.setView([start.lat, start.lng], 11);
+        map.setView([start.lat, start.lng], 11, { animate: false });
       }
     }
-  }, [storageKey, polyline, start]);
+  }, [storageKey, polyline, start, applySavedView]);
+
+  // Retorno da aba/janela: reaplica a última view salva e revalida tiles sem flicker.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      applySavedView(storageKeyRef.current);
+    };
+    const onFocus = () => applySavedView(storageKeyRef.current);
+    const onPageShow = () => applySavedView(storageKeyRef.current);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [applySavedView]);
 
   // Cleanup final: remove a instância do Leaflet ao desmontar para liberar
   // listeners de tiles/eventos e evitar callbacks tardios em estado já desmontado.
