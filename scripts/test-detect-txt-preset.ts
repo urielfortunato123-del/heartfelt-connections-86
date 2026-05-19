@@ -155,6 +155,35 @@ const run = async () => {
     }
   }
 
+  // === 2ª heurística: column-check ===
+  const utmFile = mkFile(
+    "utm.txt",
+    rows("{i}{sep}7534256{dec}12{sep}253871{dec}45{sep}680{dec}5{sep}EIXO", 6, ",", "."),
+  );
+  const utmDet = await detectTxtPresetVerbose(utmFile, ".", 0);
+  if (utmDet?.columnCheck?.rangeLabel.startsWith("UTM Sul")) {
+    pass(`column-check rotula UTM Sul ${DIM}→ ${utmDet.columnCheck.rangeLabel}${RESET}`);
+  } else {
+    fail(`column-check deveria rotular UTM Sul, obteve: ${utmDet?.columnCheck?.rangeLabel}`);
+  }
+  if (utmDet?.columnCheck && utmDet.columnCheck.nInRange === utmDet.columnCheck.sampled) {
+    pass(`column-check: 100% das amostras dentro da faixa N`);
+  } else {
+    fail(`column-check N: ${utmDet?.columnCheck?.nInRange}/${utmDet?.columnCheck?.sampled}`);
+  }
+
+  const localFile = mkFile(
+    "local.txt",
+    rows("{i}{sep}245{dec}1{sep}141{dec}2{sep}5{dec}0{sep}A", 6, ",", "."),
+  );
+  const localDet = await detectTxtPresetVerbose(localFile, ".", 0);
+  if (localDet?.columnCheck?.rangeLabel.includes("sem promoção")) {
+    pass(`column-check em sistema local não promove ${DIM}→ ${localDet.columnCheck.rangeLabel}${RESET}`);
+  } else {
+    fail(`column-check local deveria marcar "sem promoção", obteve: ${localDet?.columnCheck?.rangeLabel}`);
+  }
+
+
   console.log(
     failed === 0
       ? `\n${GREEN}✓ Todos os ${cases.length} casos passaram.${RESET}`
