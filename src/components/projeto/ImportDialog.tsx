@@ -388,11 +388,12 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] max-w-xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b border-white/10 px-6 py-4">
           <DialogTitle>Importar desenho ou pontos topográficos</DialogTitle>
         </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Arquivo</Label>
@@ -992,8 +993,9 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
             );
           })()}
         </div>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t border-white/10 bg-background px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleConfirm} disabled={!parsed || busy}>
             {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
