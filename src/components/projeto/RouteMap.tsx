@@ -45,7 +45,27 @@ type Props = {
   onRemovePoint?: (id: string) => void;
   onMovePoint?: (id: string, latlng: LatLng) => void;
   onMovePointEnd?: (id: string) => void;
+  onReady?: () => void;
 };
+
+function ReadySignal({ onReady }: { onReady?: () => void }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!onReady) return;
+    let fired = false;
+    const fire = () => {
+      if (fired) return;
+      fired = true;
+      // aguarda o próximo frame para garantir que o container terminou layout/tiles
+      requestAnimationFrame(() => requestAnimationFrame(() => onReady()));
+    };
+    map.whenReady(fire);
+    // fallback: se whenReady atrasar, dispara em até 1500ms
+    const t = setTimeout(fire, 1500);
+    return () => clearTimeout(t);
+  }, [map, onReady]);
+  return null;
+}
 
 
 function ClickCatcher({ onClick }: { onClick: (l: LatLng) => void }) {
