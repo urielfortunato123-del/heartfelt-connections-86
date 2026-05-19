@@ -239,25 +239,53 @@ export function ImportDialog({ open, onOpenChange, onImport }: Props) {
             </p>
           </div>
 
-          {parsed && (
-            <div className="rounded border border-cyan-400/20 bg-cyan-400/5 p-3 text-xs text-white/80">
-              <div><b>{parsed.source}</b></div>
-              <div>Polilinhas: <b>{parsed.polylines.length}</b> · Pontos: <b>{parsed.points.length}</b></div>
-              {parsed.bbox && (
-                <div>
-                  Bbox: X [{parsed.bbox.minX.toFixed(2)} → {parsed.bbox.maxX.toFixed(2)}], Y [
-                  {parsed.bbox.minY.toFixed(2)} → {parsed.bbox.maxY.toFixed(2)}]
-                </div>
-              )}
-              {parsed.georef && (
-                <div className="text-amber-300">⚠ {parsed.georef.hint}</div>
-              )}
-              {parsed.bbox && parsed.bbox.minX === 0 && parsed.bbox.minY === 0 && (
-                <div className="text-amber-300">
-                  ⚠ Coordenadas próximas de (0,0) — provavelmente sistema local.
-                  Após importar, ative "Posicionar manualmente" para arrastar no mapa.
-                </div>
-              )}
+          {parsed && (() => {
+            const srsWarning = parsed.bbox ? validateSrsBbox(srs, parsed.bbox) : null;
+            const nearZero = parsed.bbox && Math.abs(parsed.bbox.minX) < 1 && Math.abs(parsed.bbox.minY) < 1;
+            return (
+              <div className="rounded border border-cyan-400/20 bg-cyan-400/5 p-3 text-xs text-white/80">
+                <div><b>{parsed.source}</b></div>
+                <div>Polilinhas: <b>{parsed.polylines.length}</b> · Pontos: <b>{parsed.points.length}</b></div>
+                {parsed.bbox && (
+                  <div>
+                    Bbox: X [{parsed.bbox.minX.toFixed(2)} → {parsed.bbox.maxX.toFixed(2)}], Y [
+                    {parsed.bbox.minY.toFixed(2)} → {parsed.bbox.maxY.toFixed(2)}]
+                  </div>
+                )}
+                {parsed.georef && (
+                  <div className="text-amber-300">⚠ {parsed.georef.hint}</div>
+                )}
+                {nearZero && (
+                  <div className="text-amber-300">
+                    ⚠ Coordenadas próximas de (0,0) — provavelmente sistema local.
+                  </div>
+                )}
+                {srsWarning && (
+                  <div className="mt-2 space-y-2 rounded border border-amber-400/30 bg-amber-400/10 p-2 text-amber-200">
+                    <div>⚠ {srsWarning}</div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => setSrs(LOCAL_SRS)}
+                      >
+                        Usar sistema local
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => setSrs("EPSG:31983")}
+                      >
+                        Manter UTM 23S mesmo assim
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
             </div>
           )}
         </div>
