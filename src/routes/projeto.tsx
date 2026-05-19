@@ -1019,6 +1019,43 @@ function ProjetoPage() {
         {/* Mapa + tabela */}
         <section className="space-y-4">
           <div className="relative">
+            {importLog.length > 0 && (
+              <div className="pointer-events-auto absolute left-3 top-3 z-[1000] max-h-64 w-80 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-lg border border-white/15 bg-slate-950/85 p-2 text-[11px] font-mono shadow-xl backdrop-blur">
+                <div className="mb-1 flex items-center justify-between text-white/60">
+                  <span className="uppercase tracking-wider">Status de importação</span>
+                  <button
+                    type="button"
+                    onClick={() => setImportLog([])}
+                    className="rounded px-1 text-white/40 hover:bg-white/10 hover:text-white"
+                    aria-label="Limpar log"
+                  >
+                    ×
+                  </button>
+                </div>
+                <ul className="space-y-0.5">
+                  {importLog.map((l) => {
+                    const color =
+                      l.level === "error"
+                        ? "text-red-300"
+                        : l.level === "warn"
+                          ? "text-amber-300"
+                          : l.level === "ok"
+                            ? "text-emerald-300"
+                            : "text-white/80";
+                    const icon =
+                      l.level === "error" ? "✖" : l.level === "warn" ? "⚠" : l.level === "ok" ? "✓" : "›";
+                    const t = new Date(l.ts).toLocaleTimeString();
+                    return (
+                      <li key={l.id} className={`flex gap-2 ${color}`}>
+                        <span className="shrink-0 text-white/40">{t}</span>
+                        <span className="shrink-0">{icon}</span>
+                        <span className="break-words">{l.msg}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
             {RouteMap && (
               <RouteMap
                 viewKey={`${(meta.name || "sem-nome").trim().toLowerCase()}|${rodovia?.ref ?? ""}|${meta.startKm}|${meta.endKm}|${meta.direction}`}
