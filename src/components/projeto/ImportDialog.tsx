@@ -453,52 +453,73 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                   {thresholds.margin} · auto={autoApply})
                 </span>
               </summary>
+              {hasThresholdErrors && (
+                <div
+                  role="alert"
+                  className="mt-3 rounded border border-red-500/40 bg-red-500/10 p-2 text-[11px] text-red-200"
+                >
+                  Corrija os limiares antes de iniciar a detecção:
+                  <ul className="ml-4 list-disc">
+                    {Object.entries(thresholdErrors).map(([k, msg]) => (
+                      <li key={k}>
+                        <span className="font-medium">{k}:</span> {msg}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="mt-3 grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[11px]">Mín. amostras</Label>
                   <Input
                     type="number"
                     min={1}
-                    max={20}
+                    max={50}
+                    aria-invalid={!!thresholdErrors.minSamples}
+                    className={thresholdErrors.minSamples ? "border-red-500/60" : undefined}
                     value={thresholds.minSamples}
                     onChange={(e) =>
-                      setThresholds((t) => ({
-                        ...t,
-                        minSamples: Math.max(1, Number(e.target.value) || 1),
-                      }))
+                      setThresholds((t) => ({ ...t, minSamples: Number(e.target.value) }))
                     }
                   />
+                  {thresholdErrors.minSamples && (
+                    <p className="text-[10px] text-red-300">{thresholdErrors.minSamples}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px]">Ratio (0–1)</Label>
                   <Input
                     type="number"
-                    min={0.5}
+                    min={0}
                     max={1}
                     step={0.05}
+                    aria-invalid={!!thresholdErrors.ratio}
+                    className={thresholdErrors.ratio ? "border-red-500/60" : undefined}
                     value={thresholds.ratio}
                     onChange={(e) =>
-                      setThresholds((t) => ({
-                        ...t,
-                        ratio: Math.min(1, Math.max(0.5, Number(e.target.value) || 0.75)),
-                      }))
+                      setThresholds((t) => ({ ...t, ratio: Number(e.target.value) }))
                     }
                   />
+                  {thresholdErrors.ratio && (
+                    <p className="text-[10px] text-red-300">{thresholdErrors.ratio}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px]">Margem mín.</Label>
                   <Input
                     type="number"
                     min={0}
-                    max={20}
+                    max={100}
+                    aria-invalid={!!thresholdErrors.margin}
+                    className={thresholdErrors.margin ? "border-red-500/60" : undefined}
                     value={thresholds.margin}
                     onChange={(e) =>
-                      setThresholds((t) => ({
-                        ...t,
-                        margin: Math.max(0, Number(e.target.value) || 0),
-                      }))
+                      setThresholds((t) => ({ ...t, margin: Number(e.target.value) }))
                     }
                   />
+                  {thresholdErrors.margin && (
+                    <p className="text-[10px] text-red-300">{thresholdErrors.margin}</p>
+                  )}
                 </div>
               </div>
               <div className="mt-3 space-y-2">
