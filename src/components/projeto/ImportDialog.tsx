@@ -210,22 +210,29 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
       }
 
       try {
-        log("Detectando formato (PNEZD/PENZD/Lat-Lng)…");
-        const result = await detectTxtPresetVerbose(f, effectiveDecimal, skipHeader);
+        log(
+          `Detectando formato (min=${thresholds.minSamples}, ratio=${thresholds.ratio.toFixed(2)}, margem=${thresholds.margin})…`,
+        );
+        const result = await detectTxtPresetVerbose(f, effectiveDecimal, skipHeader, thresholds);
         if (result) {
           const tag = result.confidence === "high" ? "alta confiança" : "baixa confiança";
           if (result.confidence === "high" && result.preset !== presetName) {
-            setPresetName(result.preset);
-            toast.info(`Formato detectado: ${result.preset} (${tag})`);
-            log(`Formato detectado: ${result.preset} (${tag})`, "ok");
-            return;
-          }
-          if (result.confidence === "high") {
+            if (autoApply) {
+              setPresetName(result.preset);
+              toast.info(`Formato detectado: ${result.preset} (${tag})`);
+              log(`Formato auto-aplicado: ${result.preset} (${tag})`, "ok");
+              return;
+            }
+            log(
+              `Sugestão (auto-aplicar desativado): ${result.preset} (${tag}). Mantido "${presetName}".`,
+              "warn",
+            );
+          } else if (result.confidence === "high") {
             log(`Formato confirmado: ${result.preset} (${tag})`, "ok");
           } else {
             // Não sobrescreve quando incerto — apenas sugere ao usuário.
             log(
-              `Sugestão: ${result.preset} (${tag}). Mantido "${presetName}" — confira a prévia.`,
+              `Sugestão: ${result.preset} (${tag}). Mantido "${presetName}" — confira a prévia ou afrouxe os limiares.`,
               "warn",
             );
           }
