@@ -89,6 +89,7 @@ export default function RouteMap({
   onRemovePoint,
   onMovePoint,
   onMovePointEnd,
+  onReady,
 }: Props) {
 
   const mapRef = useRef<L.Map | null>(null);
