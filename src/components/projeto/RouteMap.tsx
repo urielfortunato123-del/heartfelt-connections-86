@@ -53,24 +53,41 @@ function ReadySignal({ onReady }: { onReady?: () => void }) {
   useEffect(() => {
     if (!onReady) return;
     let fired = false;
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
     const fire = () => {
-      if (fired) return;
+      if (fired || cancelled) return;
       fired = true;
-      // aguarda o próximo frame para garantir que o container terminou layout/tiles
-      requestAnimationFrame(() => requestAnimationFrame(() => onReady()));
+      // aguarda dois frames para garantir layout/tiles, sem disparar se desmontou.
+      raf1 = requestAnimationFrame(() => {
+        if (cancelled) return;
+        raf2 = requestAnimationFrame(() => {
+          if (cancelled) return;
+          onReady();
+        });
+      });
     };
     map.whenReady(fire);
     // fallback: se whenReady atrasar, dispara em até 1500ms
     const t = setTimeout(fire, 1500);
-    return () => clearTimeout(t);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      if (raf1) cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
   }, [map, onReady]);
   return null;
 }
 
 
 function ClickCatcher({ onClick }: { onClick: (l: LatLng) => void }) {
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
   useMapEvents({
     click(e) {
+      if (!mountedRef.current) return;
       onClick({ lat: e.latlng.lat, lng: e.latlng.lng });
     },
   });
