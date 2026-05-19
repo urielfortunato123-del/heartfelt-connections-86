@@ -45,6 +45,7 @@ import {
 import type RouteMapType from "@/components/projeto/RouteMap";
 type RouteMapComponent = ComponentType<React.ComponentProps<typeof RouteMapType>>;
 import { PdfPreviewDialog } from "@/components/projeto/PdfPreviewDialog";
+import { ImportDialog, type OverlayFeature } from "@/components/projeto/ImportDialog";
 
 function MapPlaceholder({ label }: { label: string }) {
   return (
