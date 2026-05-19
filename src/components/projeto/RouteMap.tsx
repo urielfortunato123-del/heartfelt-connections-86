@@ -227,38 +227,61 @@ export default function RouteMap({
   }, []);
 
   // Restaura view persistida (ou usa start/default) — só leitura inicial, não muda em re-render.
+  type SavedView = {
+    lat: number;
+    lng: number;
+    zoom: number;
+    baseLayer?: string;
+    overlays?: string[];
+  };
+
+  // Restaura view persistida (ou usa start/default) — só leitura inicial, não muda em re-render.
+  // Inclui também as configurações visuais (camada base ativa + overlays habilitados),
+  // que só podem ser honradas via `checked` no mount do LayersControl.
+  const initialSaved = useMemo<SavedView | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const currentKey = storageKeyRef.current;
+      const LEGACY_KEY = "pista.mapView.v1";
+      if (currentKey !== LEGACY_KEY) {
+        const legacy = window.localStorage.getItem(LEGACY_KEY);
+        const existing = window.localStorage.getItem(currentKey);
+        if (legacy && !existing) window.localStorage.setItem(currentKey, legacy);
+        if (legacy) window.localStorage.removeItem(LEGACY_KEY);
+      }
+      const raw = window.localStorage.getItem(currentKey);
+      if (!raw) return null;
+      const v = JSON.parse(raw) as SavedView;
+      if (!Number.isFinite(v.lat) || !Number.isFinite(v.lng) || !Number.isFinite(v.zoom)) return null;
+      return v;
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const currentKey = storageKeyRef.current;
-        // Migração: chave antiga global → nova chave por projeto/filtros.
-        // Só copia se a nova chave ainda não existir, para não sobrescrever
-        // uma view já salva pelo contexto atual. Remove a antiga após copiar.
-        const LEGACY_KEY = "pista.mapView.v1";
-        if (currentKey !== LEGACY_KEY) {
-          const legacy = window.localStorage.getItem(LEGACY_KEY);
-          const existing = window.localStorage.getItem(currentKey);
-          if (legacy && !existing) {
-            window.localStorage.setItem(currentKey, legacy);
-          }
-          if (legacy) {
-            window.localStorage.removeItem(LEGACY_KEY);
-          }
-        }
-        const raw = window.localStorage.getItem(currentKey);
-        if (raw) {
-          const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
-          if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
-            userInteractedRef.current = true; // respeita view persistida, não força fitBounds
-            return { center: [v.lat, v.lng], zoom: v.zoom };
-          }
-        }
-      } catch { /* ignore */ }
+    if (initialSaved) {
+      userInteractedRef.current = true; // respeita view persistida, não força fitBounds
+      return { center: [initialSaved.lat, initialSaved.lng], zoom: initialSaved.zoom };
     }
     if (start) return { center: [start.lat, start.lng], zoom: 11 };
     return { center: [-22.0154, -47.8911], zoom: 11 };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialSaved]);
+
+  // Default e estado inicial dos visuais (apenas no primeiro mount).
+  const DEFAULT_BASE = "Padrão (OSM)";
+  const initialBaseLayer = initialSaved?.baseLayer ?? DEFAULT_BASE;
+  const initialOverlaysSet = useMemo(
+    () => new Set(initialSaved?.overlays ?? []),
+    [initialSaved],
+  );
+  // Estado em ref para que o save debounced sempre leia o valor mais recente.
+  const visualsRef = useRef<{ baseLayer: string; overlays: Set<string> }>({
+    baseLayer: initialBaseLayer,
+    overlays: new Set(initialOverlaysSet),
+  });
 
   // Reenquadramento inteligente:
   // - só refaz fitBounds quando o usuário não interagiu;
@@ -320,7 +343,13 @@ export default function RouteMap({
       timer = null;
       const c = map.getCenter();
       const z = map.getZoom();
-      const payload = JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z });
+      const payload = JSON.stringify({
+        lat: c.lat,
+        lng: c.lng,
+        zoom: z,
+        baseLayer: visualsRef.current.baseLayer,
+        overlays: [...visualsRef.current.overlays],
+      });
       if (payload === lastSerialized) return;
       lastSerialized = payload;
       try {
@@ -341,10 +370,25 @@ export default function RouteMap({
       if (document.visibilityState === "hidden") flushNow();
     };
     const markInteracted = () => { userInteractedRef.current = true; };
+    const onBaseChange = (e: L.LayersControlEvent) => {
+      visualsRef.current.baseLayer = e.name;
+      scheduleSave();
+    };
+    const onOverlayAdd = (e: L.LayersControlEvent) => {
+      visualsRef.current.overlays.add(e.name);
+      scheduleSave();
+    };
+    const onOverlayRemove = (e: L.LayersControlEvent) => {
+      visualsRef.current.overlays.delete(e.name);
+      scheduleSave();
+    };
     map.on("moveend", scheduleSave);
     map.on("zoomend", scheduleSave);
     map.on("dragstart", markInteracted);
     map.on("zoomstart", markInteracted);
+    map.on("baselayerchange", onBaseChange);
+    map.on("overlayadd", onOverlayAdd);
+    map.on("overlayremove", onOverlayRemove);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", flushNow);
     return () => {
@@ -352,6 +396,9 @@ export default function RouteMap({
       map.off("zoomend", scheduleSave);
       map.off("dragstart", markInteracted);
       map.off("zoomstart", markInteracted);
+      map.off("baselayerchange", onBaseChange);
+      map.off("overlayadd", onOverlayAdd);
+      map.off("overlayremove", onOverlayRemove);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", flushNow);
       flushNow();
@@ -562,41 +609,41 @@ export default function RouteMap({
         scrollWheelZoom
       >
         <LayersControl position="topright" collapsed>
-          <BaseLayer checked name="Padrão (OSM)">
+          <BaseLayer checked={initialBaseLayer === "Padrão (OSM)"} name="Padrão (OSM)">
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
           </BaseLayer>
-          <BaseLayer name="Satélite">
+          <BaseLayer checked={initialBaseLayer === "Satélite"} name="Satélite">
             <TileLayer
               attribution="Tiles &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
             />
           </BaseLayer>
-          <BaseLayer name="Híbrido">
+          <BaseLayer checked={initialBaseLayer === "Híbrido"} name="Híbrido">
             <TileLayer
               attribution="Tiles &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
             />
           </BaseLayer>
-          <BaseLayer name="Topográfico">
+          <BaseLayer checked={initialBaseLayer === "Topográfico"} name="Topográfico">
             <TileLayer
               attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
               url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
               maxZoom={17}
             />
           </BaseLayer>
-          <Overlay name="Rótulos (sobre Satélite/Híbrido)">
+          <Overlay checked={initialOverlaysSet.has("Rótulos (sobre Satélite/Híbrido)")} name="Rótulos (sobre Satélite/Híbrido)">
             <TileLayer
               attribution="Labels &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
             />
           </Overlay>
-          <Overlay name="Transporte (ferrovias/transit)">
+          <Overlay checked={initialOverlaysSet.has("Transporte (ferrovias/transit)")} name="Transporte (ferrovias/transit)">
             <TileLayer
               attribution='&copy; <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>'
               url="https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png"
@@ -604,7 +651,7 @@ export default function RouteMap({
               opacity={0.85}
             />
           </Overlay>
-          <Overlay name="Trânsito (relativo, OSM)">
+          <Overlay checked={initialOverlaysSet.has("Trânsito (relativo, OSM)")} name="Trânsito (relativo, OSM)">
             <TileLayer
               attribution="OpenStreetMap"
               url="https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png"
