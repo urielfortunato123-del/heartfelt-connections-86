@@ -111,6 +111,28 @@ const cases: Case[] = [
     content: "",
     expect: null,
   },
+  {
+    name: "amostra pequena demais (2 linhas) → null (low confidence)",
+    content: rows("{i}{sep}7500000{dec}1{sep}250000{dec}2{sep}680{dec}0{sep}EIXO", 2, ",", "."),
+    expect: null,
+  },
+  {
+    name: "empate técnico PNEZD vs PENZD → null",
+    content:
+      // 3 linhas N>E + 3 linhas E>N — ratio = 50%, abaixo do limiar
+      rows("{i}{sep}7500000{dec}0{sep}250000{dec}0{sep}680{dec}0{sep}A", 3, ",", ".") +
+      "\n" +
+      rows("{i}{sep}250000{dec}0{sep}7500000{dec}0{sep}680{dec}0{sep}A", 3, ",", "."),
+    expect: null,
+  },
+  {
+    name: "margem insuficiente (4 vs 2) → null (75% ratio mas margem<3)",
+    content:
+      rows("{i}{sep}7500000{dec}0{sep}250000{dec}0{sep}680{dec}0{sep}A", 4, ",", ".") +
+      "\n" +
+      rows("{i}{sep}250000{dec}0{sep}7500000{dec}0{sep}680{dec}0{sep}A", 2, ",", "."),
+    expect: null,
+  },
 ];
 
 const file = (c: Case) => mkFile("sample.txt", c.content);
