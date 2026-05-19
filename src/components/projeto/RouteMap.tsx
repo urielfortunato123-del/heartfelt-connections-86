@@ -59,6 +59,7 @@ type Props = {
     polylines: [number, number][][];
     points: Array<{ lat: number; lng: number; label?: string }>;
     offset?: { dx: number; dy: number };
+    style?: { color: string; weight: number; opacity: number };
   }>;
   /** Id do overlay que o usuário está arrastando (modo posicionar). */
   draggingOverlayId?: string | null;
