@@ -609,41 +609,41 @@ export default function RouteMap({
         scrollWheelZoom
       >
         <LayersControl position="topright" collapsed>
-          <BaseLayer checked name="Padrão (OSM)">
+          <BaseLayer checked={initialBaseLayer === "Padrão (OSM)"} name="Padrão (OSM)">
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
           </BaseLayer>
-          <BaseLayer name="Satélite">
+          <BaseLayer checked={initialBaseLayer === "Satélite"} name="Satélite">
             <TileLayer
               attribution="Tiles &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
             />
           </BaseLayer>
-          <BaseLayer name="Híbrido">
+          <BaseLayer checked={initialBaseLayer === "Híbrido"} name="Híbrido">
             <TileLayer
               attribution="Tiles &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
             />
           </BaseLayer>
-          <BaseLayer name="Topográfico">
+          <BaseLayer checked={initialBaseLayer === "Topográfico"} name="Topográfico">
             <TileLayer
               attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
               url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
               maxZoom={17}
             />
           </BaseLayer>
-          <Overlay name="Rótulos (sobre Satélite/Híbrido)">
+          <Overlay checked={initialOverlaysSet.has("Rótulos (sobre Satélite/Híbrido)")} name="Rótulos (sobre Satélite/Híbrido)">
             <TileLayer
               attribution="Labels &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
             />
           </Overlay>
-          <Overlay name="Transporte (ferrovias/transit)">
+          <Overlay checked={initialOverlaysSet.has("Transporte (ferrovias/transit)")} name="Transporte (ferrovias/transit)">
             <TileLayer
               attribution='&copy; <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>'
               url="https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png"
@@ -651,7 +651,7 @@ export default function RouteMap({
               opacity={0.85}
             />
           </Overlay>
-          <Overlay name="Trânsito (relativo, OSM)">
+          <Overlay checked={initialOverlaysSet.has("Trânsito (relativo, OSM)")} name="Trânsito (relativo, OSM)">
             <TileLayer
               attribution="OpenStreetMap"
               url="https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png"
