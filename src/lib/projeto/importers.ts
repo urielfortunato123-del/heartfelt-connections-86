@@ -540,15 +540,50 @@ export async function detectTxtPresetVerbose(
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
 
-    return { preset, confidence, stats, columnCheck, topSamples: contribs };
+    return { preset, confidence, stats, columnCheck, topSamples: contribs, decision };
+  };
+
+  const explain = (
+    track: "latlng" | "with-id" | "without-id",
+    winner: number,
+    loser: number,
+  ): DetectionResult["decision"] => {
+    const total = winner + loser;
+    const ratioActual = total > 0 ? winner / total : 0;
+    const marginActual = winner - loser;
+    const reasons: string[] = [];
+    if (track === "latlng") {
+      const hitRate = sampled > 0 ? latLngHits / sampled : 0;
+      reasons.push(`latLngHits=${latLngHits}/${sampled} (${(hitRate * 100).toFixed(0)}%)`);
+      if (hitRate >= 0.9) reasons.push("≥90% → alta");
+      else if (hitRate >= 0.8) reasons.push("≥80% mas <90% → baixa");
+    } else {
+      if (total < thresholds.minSamples)
+        reasons.push(`amostras ${total} < mín ${thresholds.minSamples} → baixa`);
+      if (total > 0 && ratioActual < thresholds.ratio)
+        reasons.push(`ratio ${ratioActual.toFixed(2)} < ${thresholds.ratio.toFixed(2)} → baixa`);
+      if (marginActual < thresholds.margin)
+        reasons.push(`margem ${marginActual} < ${thresholds.margin} → baixa`);
+      if (reasons.length === 0) reasons.push("todos os critérios atendidos → alta");
+    }
+    return {
+      track,
+      winner,
+      loser,
+      total,
+      ratioActual,
+      marginActual,
+      thresholds,
+      reason: reasons.join(" · "),
+    };
   };
 
   // Lat/Lng só é alta-confiança se quase todas as amostras cabem nas faixas E há amostras suficientes.
   if (sampled >= thresholds.minSamples && latLngHits / sampled >= 0.9) {
-    return finalize("Lat,Lng,Z (GNSS)", "high");
+    return finalize("Lat,Lng,Z (GNSS)", "high", explain("latlng", latLngHits, sampled - latLngHits));
   }
   if (latLngHits / sampled >= 0.8) {
-    return finalize("Lat,Lng,Z (GNSS)", "low");
+    return finalize("Lat,Lng,Z (GNSS)", "low", explain("latlng", latLngHits, sampled - latLngHits));
   }
 
   if (withId >= withoutId && withId > 0) {
@@ -559,6 +594,7 @@ export async function detectTxtPresetVerbose(
     return finalize(
       aWin ? "PNEZD (P,N,E,Z,D)" : "PENZD (P,E,N,Z,D)",
       classify(winner, loser, thresholds),
+      explain("with-id", winner, loser),
     );
   }
 
@@ -570,6 +606,7 @@ export async function detectTxtPresetVerbose(
     return finalize(
       aWin ? "NEZ (N,E,Z)" : "ENZ (E,N,Z)",
       classify(winner, loser, thresholds),
+      explain("without-id", winner, loser),
     );
   }
 
