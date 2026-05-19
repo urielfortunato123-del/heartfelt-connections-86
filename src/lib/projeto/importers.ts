@@ -265,11 +265,23 @@ export type ColumnCheck = {
   promoted: boolean;
 };
 
+export type SampleContribution = {
+  /** Número da linha no arquivo (1-indexed, já considerando skipHeaderLines). */
+  lineNumber: number;
+  /** Texto cru da linha (truncado em ~120 chars). */
+  raw: string;
+  /** Valores extraídos como N e E sob a interpretação do preset escolhido. */
+  n: number;
+  e: number;
+  /** Quão forte a linha "vota" no preset: combina margem de N vs E e aderência à faixa. */
+  score: number;
+  /** Rótulo humano descrevendo por que essa linha contribuiu. */
+  reason: string;
+};
+
 export type DetectionResult = {
   preset: keyof typeof TXT_PRESETS;
-  /** "high" só quando vence com folga (≥75% e ≥3 votos de margem). "low" caso contrário. */
   confidence: "high" | "low";
-  /** Estatísticas brutas para debug/UI. */
   stats: {
     sampled: number;
     withId: number;
@@ -280,8 +292,9 @@ export type DetectionResult = {
     bGtA_noid: number;
     latLngHits: number;
   };
-  /** 2ª heurística: consistência por coluna ao longo das linhas. */
   columnCheck?: ColumnCheck;
+  /** Top amostras (ordenadas por score desc) que mais contribuíram para o preset vencedor. */
+  topSamples?: SampleContribution[];
 };
 
 export type DetectionThresholds = {
