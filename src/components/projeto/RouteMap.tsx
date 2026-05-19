@@ -265,7 +265,7 @@ export default function RouteMap({
       const c = map.getCenter();
       const z = map.getZoom();
       try {
-        window.localStorage.setItem(VIEW_KEY, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z }));
+        window.localStorage.setItem(storageKeyRef.current, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z }));
       } catch { /* ignore */ }
     };
     const markInteracted = () => { userInteractedRef.current = true; };
