@@ -111,18 +111,26 @@ function loadDerPrefs(): { kmBase: number; direction: DerDirection } {
 }
 
 function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
-  const [prefs, setPrefs] = useState<{ kmBase: number; direction: DerDirection }>(
-    () => loadDerPrefs(),
-  );
+  // Inicia com default determinístico para casar com o SSR; carrega prefs no client.
+  const [prefs, setPrefs] = useState<{ kmBase: number; direction: DerDirection }>({
+    kmBase: 0,
+    direction: "asc",
+  });
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setPrefs(loadDerPrefs());
+    setHydrated(true);
+  }, []);
   const { kmBase, direction } = prefs;
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem(DER_PREFS_KEY, JSON.stringify(prefs));
     } catch {
       /* noop */
     }
-  }, [prefs]);
+  }, [prefs, hydrated]);
 
   // Estaca = distância absoluta entre km atual e km base.
   // O sentido afeta apenas para que lado da base aplicamos novos valores
