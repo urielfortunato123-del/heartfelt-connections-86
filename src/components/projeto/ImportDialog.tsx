@@ -994,8 +994,9 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
             );
           })()}
         </div>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t border-white/10 bg-background px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleConfirm} disabled={!parsed || busy}>
             {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
