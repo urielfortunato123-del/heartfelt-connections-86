@@ -859,7 +859,23 @@ function ProjetoPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.length === 0 && (
+                {(!mounted || loading) && rows.length === 0 && (
+                  <>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <tr key={`sk-${i}`} className="border-t border-white/5">
+                        {Array.from({ length: 9 }).map((__, j) => (
+                          <td key={j} className="px-3 py-3">
+                            <div
+                              className="h-3 animate-pulse rounded bg-white/10"
+                              style={{ width: `${[55, 70, 45, 45, 60, 60, 60, 80, 20][j]}%` }}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </>
+                )}
+                {mounted && !loading && rows.length === 0 && (
                   <tr>
                     <td colSpan={9} className="px-3 py-8 text-center text-white/40">
                       Marque o início e o fim no mapa para gerar o estaqueamento.
