@@ -810,30 +810,65 @@ function ProjetoPage() {
           </Button>
 
           {overlays.length > 0 && (
-            <div className="space-y-1 rounded border border-white/10 bg-black/30 p-2 text-xs">
+            <div className="space-y-2 rounded border border-white/10 bg-black/30 p-2 text-xs">
               <div className="font-semibold uppercase tracking-wider text-white/60">Overlays importados</div>
-              {overlays.map((o) => (
-                <div key={o.id} className="flex items-center justify-between gap-2">
-                  <span className="truncate text-white/80" title={o.source}>{o.source}</span>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant={draggingOverlayId === o.id ? "default" : "outline"}
-                      onClick={() => setDraggingOverlayId((cur) => (cur === o.id ? null : o.id))}
-                      title="Arrastar para posicionar no mapa"
-                    >
-                      {draggingOverlayId === o.id ? "Soltar" : "Posicionar"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setOverlays((prev) => prev.filter((x) => x.id !== o.id))}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+              {overlays.map((o) => {
+                const style = o.style ?? { color: "#34d399", weight: 2.5, opacity: 0.9 };
+                const updateStyle = (patch: Partial<typeof style>) =>
+                  setOverlays((prev) =>
+                    prev.map((x) => (x.id === o.id ? { ...x, style: { ...style, ...patch } } : x)),
+                  );
+                return (
+                  <div key={o.id} className="space-y-2 rounded border border-white/10 bg-black/20 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-white/80" title={o.source}>{o.source}</span>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant={draggingOverlayId === o.id ? "default" : "outline"}
+                          onClick={() => setDraggingOverlayId((cur) => (cur === o.id ? null : o.id))}
+                          title="Arrastar para posicionar no mapa"
+                        >
+                          {draggingOverlayId === o.id ? "Soltar" : "Posicionar"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setOverlays((prev) => prev.filter((x) => x.id !== o.id))}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1">
+                      <Label className="text-[11px] text-white/60">Cor</Label>
+                      <input
+                        type="color"
+                        value={style.color}
+                        onChange={(e) => updateStyle({ color: e.target.value })}
+                        className="h-6 w-full cursor-pointer rounded border border-white/10 bg-transparent"
+                      />
+                      <span className="w-12 text-right text-[10px] text-white/50">{style.color}</span>
+
+                      <Label className="text-[11px] text-white/60">Espessura</Label>
+                      <Input
+                        type="range" min={1} max={10} step={0.5}
+                        value={style.weight}
+                        onChange={(e) => updateStyle({ weight: Number(e.target.value) })}
+                      />
+                      <span className="w-12 text-right text-[10px] text-cyan-300">{style.weight}px</span>
+
+                      <Label className="text-[11px] text-white/60">Opacidade</Label>
+                      <Input
+                        type="range" min={0.1} max={1} step={0.05}
+                        value={style.opacity}
+                        onChange={(e) => updateStyle({ opacity: Number(e.target.value) })}
+                      />
+                      <span className="w-12 text-right text-[10px] text-cyan-300">{Math.round(style.opacity * 100)}%</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

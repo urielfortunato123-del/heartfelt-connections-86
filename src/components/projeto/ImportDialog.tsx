@@ -28,6 +28,8 @@ export type OverlayFeature = {
   points: Array<{ lat: number; lng: number; label?: string }>;
   /** Offset aplicado em metros (usado no modo arrastar). */
   offset?: { dx: number; dy: number };
+  /** Estilo visual ajustável (cor/espessura/opacidade). */
+  style?: { color: string; weight: number; opacity: number };
 };
 
 type Props = {
@@ -152,6 +154,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: Props) {
       kind: parsed.kind,
       polylines,
       points,
+      style: { color: "#34d399", weight: 2.5, opacity: 0.9 },
     };
     onImport(overlay);
     onOpenChange(false);
