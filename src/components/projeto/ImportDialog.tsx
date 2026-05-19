@@ -347,6 +347,93 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
             </div>
           )}
 
+          {isTxt && (
+            <details className="rounded border border-white/10 bg-black/30 p-3 text-xs">
+              <summary className="cursor-pointer select-none text-white/70">
+                Limiares da detecção automática{" "}
+                <span className="ml-1 text-white/40">
+                  (min={thresholds.minSamples} · ratio={thresholds.ratio.toFixed(2)} · margem=
+                  {thresholds.margin}{autoApply ? "" : " · auto-aplicar OFF"})
+                </span>
+              </summary>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Mín. amostras</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={thresholds.minSamples}
+                    onChange={(e) =>
+                      setThresholds((t) => ({
+                        ...t,
+                        minSamples: Math.max(1, Number(e.target.value) || 1),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Ratio (0–1)</Label>
+                  <Input
+                    type="number"
+                    min={0.5}
+                    max={1}
+                    step={0.05}
+                    value={thresholds.ratio}
+                    onChange={(e) =>
+                      setThresholds((t) => ({
+                        ...t,
+                        ratio: Math.min(1, Math.max(0.5, Number(e.target.value) || 0.75)),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Margem mín.</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={thresholds.margin}
+                    onChange={(e) =>
+                      setThresholds((t) => ({
+                        ...t,
+                        margin: Math.max(0, Number(e.target.value) || 0),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={autoApply}
+                    onChange={(e) => setAutoApply(e.target.checked)}
+                  />
+                  Auto-aplicar preset quando confiança = alta
+                </label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-[11px]"
+                  onClick={() => {
+                    setThresholds(DEFAULT_THRESHOLDS);
+                    setAutoApply(true);
+                  }}
+                >
+                  Restaurar padrão
+                </Button>
+              </div>
+              <p className="mt-2 text-[10px] text-white/40">
+                Mais rígido (ratio↑, margem↑) = só auto-aplica quando tem certeza. Mais permissivo
+                (valores↓) = aplica mesmo em arquivos pequenos ou ambíguos.
+              </p>
+            </details>
+          )}
+
+
+
           {isTxt && previewRows.length > 0 && (
             <div className="rounded border border-white/10 bg-black/30 p-2">
               <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-wider text-white/60">
