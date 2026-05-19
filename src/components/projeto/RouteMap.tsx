@@ -8,9 +8,12 @@ import {
   CircleMarker,
   Popup,
   Tooltip,
+  LayersControl,
   useMap,
   useMapEvents,
 } from "react-leaflet";
+
+const { BaseLayer, Overlay } = LayersControl;
 
 
 // Fix de ícone padrão do Leaflet (caminhos quebrados via bundler)
