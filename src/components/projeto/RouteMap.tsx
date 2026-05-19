@@ -343,7 +343,13 @@ export default function RouteMap({
       timer = null;
       const c = map.getCenter();
       const z = map.getZoom();
-      const payload = JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z });
+      const payload = JSON.stringify({
+        lat: c.lat,
+        lng: c.lng,
+        zoom: z,
+        baseLayer: visualsRef.current.baseLayer,
+        overlays: [...visualsRef.current.overlays],
+      });
       if (payload === lastSerialized) return;
       lastSerialized = payload;
       try {
@@ -364,10 +370,25 @@ export default function RouteMap({
       if (document.visibilityState === "hidden") flushNow();
     };
     const markInteracted = () => { userInteractedRef.current = true; };
+    const onBaseChange = (e: L.LayersControlEvent) => {
+      visualsRef.current.baseLayer = e.name;
+      scheduleSave();
+    };
+    const onOverlayAdd = (e: L.LayersControlEvent) => {
+      visualsRef.current.overlays.add(e.name);
+      scheduleSave();
+    };
+    const onOverlayRemove = (e: L.LayersControlEvent) => {
+      visualsRef.current.overlays.delete(e.name);
+      scheduleSave();
+    };
     map.on("moveend", scheduleSave);
     map.on("zoomend", scheduleSave);
     map.on("dragstart", markInteracted);
     map.on("zoomstart", markInteracted);
+    map.on("baselayerchange", onBaseChange);
+    map.on("overlayadd", onOverlayAdd);
+    map.on("overlayremove", onOverlayRemove);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", flushNow);
     return () => {
@@ -375,6 +396,9 @@ export default function RouteMap({
       map.off("zoomend", scheduleSave);
       map.off("dragstart", markInteracted);
       map.off("zoomstart", markInteracted);
+      map.off("baselayerchange", onBaseChange);
+      map.off("overlayadd", onOverlayAdd);
+      map.off("overlayremove", onOverlayRemove);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", flushNow);
       flushNow();
