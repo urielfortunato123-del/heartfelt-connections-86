@@ -286,8 +286,6 @@ export function ImportDialog({ open, onOpenChange, onImport }: Props) {
               </div>
             );
           })()}
-            </div>
-          )}
         </div>
 
         <DialogFooter>
