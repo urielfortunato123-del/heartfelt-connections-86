@@ -498,7 +498,7 @@ function ProjetoPage() {
     setMeta((m) => ({ ...m, startKm: 0, endKm: 0 }));
   }
 
-  async function handleImport(file: File | null) {
+  const handleImport = async (file: File | null) => {
     if (!file) return;
     try {
       const imported = await importSpreadsheet(file);
