@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, FileDown, FileSpreadsheet, FileText, MapPin, Plus, Route as RouteIcon, Trash2, Upload } from "lucide-react";
 
@@ -41,7 +41,8 @@ import {
 
 
 
-const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
+import type RouteMapType from "@/components/projeto/RouteMap";
+type RouteMapComponent = ComponentType<React.ComponentProps<typeof RouteMapType>>;
 import { PdfPreviewDialog } from "@/components/projeto/PdfPreviewDialog";
 
 function MapPlaceholder({ label }: { label: string }) {
@@ -125,6 +126,36 @@ function loadSaved(): SavedProject | null {
 function ProjetoPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Carregamento robusto do RouteMap: só renderiza quando o módulo + Leaflet
+  // estão disponíveis no navegador. O placeholder permanece sobreposto até o
+  // próprio mapa sinalizar prontidão (whenReady), eliminando flicker.
+  const [RouteMap, setRouteMap] = useState<RouteMapComponent | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  useEffect(() => {
+    if (!mounted) return;
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [mod] = await Promise.all([
+          import("@/components/projeto/RouteMap"),
+          import("leaflet"),
+        ]);
+        // Garante que a API do Leaflet está exposta globalmente antes de montar.
+        if (typeof (window as unknown as { L?: unknown }).L === "undefined") {
+          (window as unknown as { L: unknown }).L = (await import("leaflet")).default;
+        }
+        if (!cancelled) setRouteMap(() => mod.default as RouteMapComponent);
+      } catch (err) {
+        console.error("Falha ao carregar o RouteMap/Leaflet:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted]);
+
 
   const [meta, setMeta] = useState<ProjectMeta>({
     name: "SP-261",
@@ -743,8 +774,8 @@ function ProjetoPage() {
 
         {/* Mapa + tabela */}
         <section className="space-y-4">
-          {mounted ? (
-            <Suspense fallback={<MapPlaceholder label="Carregando mapa…" />}>
+          <div className="relative">
+            {RouteMap && (
               <RouteMap
                 start={start}
                 end={end}
@@ -753,6 +784,7 @@ function ProjetoPage() {
                 manualPoints={manuals}
                 mode={mode}
                 onClick={handleMapClick}
+                onReady={() => setMapReady(true)}
                 onUpdatePoint={(id, patch) =>
                   commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                 }
@@ -786,10 +818,22 @@ function ProjetoPage() {
                 }}
                 onMovePointEnd={endLive}
               />
-            </Suspense>
-          ) : (
-            <MapPlaceholder label="Inicializando mapa…" />
-          )}
+            )}
+            {!mapReady && (
+              <div className="absolute inset-0 z-[500]">
+                <MapPlaceholder
+                  label={
+                    !mounted
+                      ? "Inicializando mapa…"
+                      : !RouteMap
+                        ? "Carregando mapa…"
+                        : "Preparando Leaflet…"
+                  }
+                />
+              </div>
+            )}
+          </div>
+
 
           {loading && <div className="text-sm text-cyan-300">Calculando rota…</div>}
 
