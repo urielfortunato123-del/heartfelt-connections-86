@@ -378,11 +378,17 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
 
   const handleParse = async (f: File) => {
     setBusy(true);
+    setStage(35, `Lendo arquivo "${f.name}" (${Math.round(f.size / 1024)} KB)…`);
     try {
       log(`Lendo arquivo "${f.name}" (${Math.round(f.size / 1024)} KB)…`);
       const isDxfFile = f.name.toLowerCase().endsWith(".dxf");
-      log(isDxfFile ? "Interpretando entidades DXF…" : "Interpretando pontos topográficos…");
+      const parseLabel = isDxfFile ? "Interpretando entidades DXF…" : "Interpretando pontos topográficos…";
+      setStage(60, parseLabel);
+      log(parseLabel);
+      // Cede o frame para a UI pintar a barra antes do parse pesado.
+      await new Promise((r) => setTimeout(r, 0));
       const ds = isDxfFile ? await parseDxf(f) : await parseTopoTxt(f, txtFormat);
+      setStage(90, "Calculando geometria e bounding box…");
       log(
         `Parse OK: ${ds.polylines.length} polilinha(s), ${ds.points.length} ponto(s).`,
         "ok",
@@ -391,12 +397,16 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
         log("Nenhuma geometria encontrada — verifique formato/separador/cabeçalho.", "warn");
       }
       setParsed(ds);
+      setStage(100, "Pronto.");
     } catch (err) {
       const m = err instanceof Error ? err.message : "Falha ao ler o arquivo.";
       toast.error(m);
       log(`Falha na leitura: ${m}`, "error");
+      setStage(100, `Falha: ${m}`);
     } finally {
       setBusy(false);
+      // Esconde a barra após um instante para o usuário ver o "Pronto".
+      window.setTimeout(() => setProgress(null), 800);
     }
   };
 
