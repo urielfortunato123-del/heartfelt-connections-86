@@ -699,6 +699,74 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                     </div>
                   )}
 
+                  {detection.decision && (
+                    <div
+                      className={`mt-3 rounded border p-2 text-[11px] ${
+                        detection.confidence === "high"
+                          ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-100"
+                          : "border-amber-400/30 bg-amber-400/5 text-amber-100"
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="font-mono uppercase tracking-wider text-[10px]">
+                          Por que {detection.confidence === "high" ? "ALTA" : "BAIXA"} confiança?
+                        </span>
+                        <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-[10px]">
+                          trilha: {detection.decision.track}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono">
+                        <span>
+                          Limiares aplicados:{" "}
+                          <b>
+                            mín={detection.decision.thresholds.minSamples} · ratio=
+                            {detection.decision.thresholds.ratio.toFixed(2)} · margem=
+                            {detection.decision.thresholds.margin}
+                          </b>
+                        </span>
+                        <span>
+                          Amostras: <b>{detection.stats.sampled}</b>{" "}
+                          <span className="opacity-60">
+                            (latLngHits: {detection.stats.latLngHits})
+                          </span>
+                        </span>
+                        <span>
+                          Winner / Loser:{" "}
+                          <b className="text-emerald-300">{detection.decision.winner}</b>
+                          {" / "}
+                          <b className="text-red-300">{detection.decision.loser}</b>{" "}
+                          <span className="opacity-60">(total {detection.decision.total})</span>
+                        </span>
+                        <span>
+                          Ratio real:{" "}
+                          <b
+                            className={
+                              detection.decision.ratioActual >=
+                              detection.decision.thresholds.ratio
+                                ? "text-emerald-300"
+                                : "text-amber-300"
+                            }
+                          >
+                            {(detection.decision.ratioActual * 100).toFixed(0)}%
+                          </b>{" "}
+                          · Margem real:{" "}
+                          <b
+                            className={
+                              detection.decision.marginActual >=
+                              detection.decision.thresholds.margin
+                                ? "text-emerald-300"
+                                : "text-amber-300"
+                            }
+                          >
+                            {detection.decision.marginActual}
+                          </b>
+                        </span>
+                      </div>
+                      <div className="mt-1 text-white/70">{detection.decision.reason}</div>
+                    </div>
+                  )}
+
+
                   {detection.topSamples && detection.topSamples.length > 0 && (
                     <details className="mt-3 rounded border border-white/10 bg-white/[0.03] p-2 text-[11px]">
                       <summary className="cursor-pointer select-none text-white/70">
