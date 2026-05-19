@@ -1019,8 +1019,9 @@ function ProjetoPage() {
         {/* Mapa + tabela */}
         <section className="space-y-4">
           <div className="relative">
-            {importLog.length > 0 && (
-              <div className="pointer-events-auto absolute left-3 top-3 z-[1000] max-h-64 w-80 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-lg border border-white/15 bg-slate-950/85 p-2 text-[11px] font-mono shadow-xl backdrop-blur">
+            {importLog.length > 0 && !importOpen && (
+              <div className="pointer-events-auto absolute left-3 top-3 z-40 max-h-64 w-80 max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-lg border border-white/15 bg-slate-950/85 p-2 text-[11px] font-mono shadow-xl backdrop-blur">
+
                 <div className="mb-1 flex items-center justify-between text-white/60">
                   <span className="uppercase tracking-wider">Status de importação</span>
                   <button
