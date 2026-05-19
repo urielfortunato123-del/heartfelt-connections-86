@@ -180,9 +180,34 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     if (!f) return;
     const isTxtFile = f.name.toLowerCase().endsWith(".txt") || f.name.toLowerCase().endsWith(".csv");
     if (isTxtFile) {
+      // 1) Detecta o separador decimal (vírgula vs ponto) antes de qualquer parse,
+      //    para evitar erros silenciosos (ex.: "7.534,21" lido como 7.534).
+      let effectiveDecimal: "." | "," = decimal;
+      try {
+        log("Detectando separador decimal (vírgula vs ponto)…");
+        const dec = await detectDecimalSeparator(f, skipHeader);
+        const tag = dec.confidence === "high" ? "alta confiança" : "baixa confiança";
+        if (dec.confidence === "high" && dec.decimal !== decimal) {
+          setDecimal(dec.decimal);
+          effectiveDecimal = dec.decimal;
+          toast.info(`Decimal detectado: "${dec.decimal}" (${tag})`);
+          log(
+            `Decimal detectado: "${dec.decimal}" — vírgulas=${dec.stats.comma}, pontos=${dec.stats.dot} (${tag}).`,
+            "ok",
+          );
+        } else {
+          log(
+            `Decimal: "${dec.decimal}" — vírgulas=${dec.stats.comma}, pontos=${dec.stats.dot} (${tag}).`,
+            dec.confidence === "high" ? "ok" : "warn",
+          );
+        }
+      } catch {
+        log("Detecção do decimal falhou — usando o atual.", "warn");
+      }
+
       try {
         log("Detectando formato (PNEZD/PENZD/Lat-Lng)…");
-        const result = await detectTxtPresetVerbose(f, decimal, skipHeader);
+        const result = await detectTxtPresetVerbose(f, effectiveDecimal, skipHeader);
         if (result) {
           const tag = result.confidence === "high" ? "alta confiança" : "baixa confiança";
           if (result.confidence === "high" && result.preset !== presetName) {
