@@ -257,27 +257,53 @@ export default function RouteMap({
     mapRef.current.fitBounds(bounds, { padding: [30, 30] });
   }, [polyline]);
 
-  // Persiste center/zoom em cada moveend/zoomend e marca interação manual.
+  // Persiste center/zoom em moveend/zoomend, mas com debounce (250ms) + dedup
+  // para evitar escrita excessiva ao arrastar/zoom contínuo. Flush ao desmontar
+  // e ao esconder a aba, garantindo que o último estado nunca se perca.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const save = () => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastSerialized = "";
+    const flush = () => {
+      timer = null;
       const c = map.getCenter();
       const z = map.getZoom();
+      const payload = JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z });
+      if (payload === lastSerialized) return;
+      lastSerialized = payload;
       try {
-        window.localStorage.setItem(storageKeyRef.current, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z }));
+        window.localStorage.setItem(storageKeyRef.current, payload);
       } catch { /* ignore */ }
     };
+    const scheduleSave = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flush, 250);
+    };
+    const flushNow = () => {
+      if (timer) {
+        clearTimeout(timer);
+        flush();
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushNow();
+    };
     const markInteracted = () => { userInteractedRef.current = true; };
-    map.on("moveend", save);
-    map.on("zoomend", save);
+    map.on("moveend", scheduleSave);
+    map.on("zoomend", scheduleSave);
     map.on("dragstart", markInteracted);
     map.on("zoomstart", markInteracted);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", flushNow);
     return () => {
-      map.off("moveend", save);
-      map.off("zoomend", save);
+      map.off("moveend", scheduleSave);
+      map.off("zoomend", scheduleSave);
       map.off("dragstart", markInteracted);
       map.off("zoomstart", markInteracted);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", flushNow);
+      flushNow();
     };
   }, []);
 
