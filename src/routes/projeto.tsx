@@ -244,6 +244,42 @@ function ProjetoPage() {
     toast.success("Início e fim sugeridos sobre a rodovia destacada.");
   }, [rodovia, meta]);
 
+  // Importação de arquivos (DXF, TXT topográfico)
+  const [importOpen, setImportOpen] = useState(false);
+  const [overlays, setOverlays] = useState<OverlayFeature[]>([]);
+  const [draggingOverlayId, setDraggingOverlayId] = useState<string | null>(null);
+
+  const handleImport = useCallback((ov: OverlayFeature) => {
+    setOverlays((prev) => [...prev, ov]);
+    // se o overlay traz pelo menos um ponto/polilinha, fit no bbox
+    const all: [number, number][] = [
+      ...ov.polylines.flat(),
+      ...ov.points.map((p) => [p.lat, p.lng] as [number, number]),
+    ];
+    if (all.length > 0) {
+      const lats = all.map((p) => p[0]);
+      const lngs = all.map((p) => p[1]);
+      setFitBbox({
+        south: Math.min(...lats),
+        north: Math.max(...lats),
+        west: Math.min(...lngs),
+        east: Math.max(...lngs),
+        key: Date.now(),
+      });
+    }
+  }, []);
+
+  const handleOverlayDrag = useCallback((id: string, dLat: number, dLng: number) => {
+    setOverlays((prev) =>
+      prev.map((o) =>
+        o.id === id
+          ? { ...o, offset: { dx: (o.offset?.dx ?? 0) + dLng, dy: (o.offset?.dy ?? 0) + dLat } }
+          : o,
+      ),
+    );
+  }, []);
+
+
 
   const [start, setStart] = useState<LL | null>(null);
   const [end, setEnd] = useState<LL | null>(null);
