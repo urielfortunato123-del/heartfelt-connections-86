@@ -283,6 +283,51 @@ export default function RouteMap({
     overlays: new Set(initialOverlaysSet),
   });
 
+  // Registry das instâncias L.TileLayer por nome — permite alternar camadas
+  // imperativamente quando o viewKey muda (sem remount do MapContainer).
+  const BASE_NAMES = ["Padrão (OSM)", "Satélite", "Híbrido", "Topográfico"] as const;
+  const OVERLAY_NAMES = [
+    "Rótulos (sobre Satélite/Híbrido)",
+    "Transporte (ferrovias/transit)",
+    "Trânsito (relativo, OSM)",
+  ] as const;
+  const tileLayersRef = useRef<Map<string, L.Layer>>(new Map());
+  const registerTile = useCallback(
+    (name: string) => (layer: L.Layer | null) => {
+      if (layer) tileLayersRef.current.set(name, layer);
+    },
+    [],
+  );
+  const syncVisuals = useCallback((baseLayer: string | undefined, overlays: string[] | undefined) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const tiles = tileLayersRef.current;
+    const targetBase = baseLayer && (BASE_NAMES as readonly string[]).includes(baseLayer)
+      ? baseLayer
+      : "Padrão (OSM)";
+    if (targetBase !== visualsRef.current.baseLayer) {
+      for (const n of BASE_NAMES) {
+        const l = tiles.get(n);
+        if (!l) continue;
+        const has = map.hasLayer(l);
+        if (n === targetBase && !has) map.addLayer(l);
+        else if (n !== targetBase && has) map.removeLayer(l);
+      }
+      visualsRef.current.baseLayer = targetBase;
+    }
+    const targetOverlays = new Set(overlays ?? []);
+    for (const n of OVERLAY_NAMES) {
+      const l = tiles.get(n);
+      if (!l) continue;
+      const want = targetOverlays.has(n);
+      const has = map.hasLayer(l);
+      if (want && !has) map.addLayer(l);
+      else if (!want && has) map.removeLayer(l);
+    }
+    visualsRef.current.overlays = targetOverlays;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Reenquadramento inteligente:
   // - só refaz fitBounds quando o usuário não interagiu;
   // - só refaz quando a polyline muda de forma RELEVANTE (bbox arredondado a ~0.0005°
