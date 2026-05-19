@@ -252,14 +252,55 @@ export default function RouteMap({
     };
   }, []);
 
+  // Fullscreen: sincroniza estado com a Fullscreen API e ajusta o tamanho do mapa.
+  useEffect(() => {
+    const onFsChange = () => {
+      const active = document.fullscreenElement === containerRef.current;
+      setIsFullscreen(active);
+      // Após transição, recalcula tiles para preencher a nova área.
+      setTimeout(() => mapRef.current?.invalidateSize(), 200);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = containerRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await el.requestFullscreen();
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   return (
-    <div className="relative h-[480px] w-full overflow-hidden rounded-lg border border-white/10">
+    <div
+      ref={containerRef}
+      className={
+        isFullscreen
+          ? "relative h-screen w-screen bg-slate-950"
+          : "relative h-[480px] w-full overflow-hidden rounded-lg border border-white/10"
+      }
+    >
       <div className="absolute left-2 top-2 z-[400] rounded bg-black/70 px-3 py-1 text-xs text-white">
         Modo:{" "}
         <span className="font-bold text-cyan-300">
           {mode === "start" ? "Clique para marcar INÍCIO" : mode === "end" ? "Clique para marcar FIM" : "Clique para adicionar PONTO"}
         </span>
       </div>
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        className="absolute right-2 top-2 z-[400] rounded bg-black/70 px-3 py-1 text-xs font-medium text-white hover:bg-black/90"
+        title={isFullscreen ? "Sair de tela cheia" : "Tela cheia"}
+      >
+        {isFullscreen ? "↙ Sair" : "⛶ Tela cheia"}
+      </button>
       <MapContainer
         ref={(m) => {
           mapRef.current = m as unknown as L.Map | null;
@@ -269,13 +310,72 @@ export default function RouteMap({
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom
       >
+        <LayersControl position="topright" collapsed>
+          <BaseLayer checked name="Padrão (OSM)">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          </BaseLayer>
+          <BaseLayer name="Satélite">
+            <TileLayer
+              attribution="Tiles &copy; Esri"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={19}
+            />
+          </BaseLayer>
+          <BaseLayer name="Híbrido">
+            <TileLayer
+              attribution="Tiles &copy; Esri"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={19}
+            />
+          </BaseLayer>
+          <BaseLayer name="Topográfico">
+            <TileLayer
+              attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
+              url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+              maxZoom={17}
+            />
+          </BaseLayer>
+          <Overlay name="Rótulos (sobre Satélite/Híbrido)">
+            <TileLayer
+              attribution="Labels &copy; Esri"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={19}
+            />
+          </Overlay>
+          <Overlay name="Transporte (ferrovias/transit)">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>'
+              url="https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png"
+              maxZoom={19}
+              opacity={0.85}
+            />
+          </Overlay>
+          <Overlay name="Trânsito (relativo, OSM)">
+            <TileLayer
+              attribution="OpenStreetMap"
+              url="https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png"
+              maxZoom={18}
+              opacity={0.6}
+            />
+          </Overlay>
+        </LayersControl>
 
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
         <ClickCatcher onClick={safeOnClick} />
         <ReadySignal onReady={safeOnReady} />
+        <FitBoundsOnChange bbox={fitBbox ?? null} />
+
+        {/* Rodovia destacada (resultado da busca) — amarelo translúcido por baixo do traçado roxo. */}
+        {highlightedRoad?.map((way, i) => (
+          <Polyline
+            key={`hl-${i}`}
+            positions={way}
+            pathOptions={{ color: "#facc15", weight: 6, opacity: 0.55 }}
+          />
+        ))}
+
 
 
         {start && (
