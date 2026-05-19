@@ -117,20 +117,35 @@ const cases: Case[] = [
     expect: null,
   },
   {
+    // Empate técnico real: metade das linhas têm N>E em UTM Sul plausível e a outra
+    // metade tem E>N também em UTM Sul plausível — ambos os lados passariam no
+    // column-check, então o voto a/b decide e empata → null.
     name: "empate técnico PNEZD vs PENZD → null",
     content:
-      // 3 linhas N>E + 3 linhas E>N — ratio = 50%, abaixo do limiar
       rows("{i}{sep}7500000{dec}0{sep}250000{dec}0{sep}680{dec}0{sep}A", 3, ",", ".") +
       "\n" +
       rows("{i}{sep}250000{dec}0{sep}7500000{dec}0{sep}680{dec}0{sep}A", 3, ",", "."),
     expect: null,
   },
   {
-    name: "margem insuficiente (4 vs 2) → null (75% ratio mas margem<3)",
+    // Mesmo com margem baixa (4 vs 2), se as 4 linhas vencedoras encaixarem
+    // perfeitamente na faixa UTM Sul, a 2ª heurística promove para "high".
+    // Comportamento esperado da nova heurística de consistência por coluna.
+    name: "margem baixa mas colunas UTM consistentes → promove para high",
     content:
       rows("{i}{sep}7500000{dec}0{sep}250000{dec}0{sep}680{dec}0{sep}A", 4, ",", ".") +
       "\n" +
       rows("{i}{sep}250000{dec}0{sep}7500000{dec}0{sep}680{dec}0{sep}A", 2, ",", "."),
+    expect: "PNEZD (P,N,E,Z,D)",
+  },
+  {
+    // Mesma configuração mas com valores aleatórios fora da faixa UTM —
+    // o check de coluna não promove, então fica "low" → null.
+    name: "margem baixa + colunas fora de faixa → null",
+    content:
+      rows("{i}{sep}42{dec}0{sep}17{dec}0{sep}680{dec}0{sep}A", 4, ",", ".") +
+      "\n" +
+      rows("{i}{sep}900000000{dec}0{sep}900000{dec}0{sep}680{dec}0{sep}A", 2, ",", "."),
     expect: null,
   },
 ];
