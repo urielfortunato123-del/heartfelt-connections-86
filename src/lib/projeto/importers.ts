@@ -192,6 +192,63 @@ function toNum(s: string, decimal: "." | ","): number {
   return Number(norm);
 }
 
+export type DecimalDetection = {
+  decimal: "." | ",";
+  confidence: "high" | "low";
+  stats: { sampled: number; comma: number; dot: number };
+};
+
+/**
+ * Detecta o separador decimal de um TXT/CSV inspecionando até 20 linhas.
+ * Regra: se o separador de colunas é `,`, o decimal é forçosamente `.`.
+ * Caso contrário, conta tokens numéricos que contêm `,` vs `.` e escolhe a maioria.
+ */
+export async function detectDecimalSeparator(
+  file: File,
+  skipHeaderLines = 0,
+): Promise<DecimalDetection> {
+  const text = await file.text();
+  const lines = text
+    .split(/\r?\n/)
+    .slice(skipHeaderLines)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) {
+    return { decimal: ".", confidence: "low", stats: { sampled: 0, comma: 0, dot: 0 } };
+  }
+  const sepStr = detectSeparator(lines[0]);
+
+  // Se as colunas são separadas por vírgula, o decimal não pode ser vírgula.
+  if (sepStr === ",") {
+    return { decimal: ".", confidence: "high", stats: { sampled: lines.length, comma: 0, dot: 0 } };
+  }
+
+  const re = sepStr === "\\s+" ? /\s+/ : new RegExp(sepStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  let comma = 0;
+  let dot = 0;
+  let sampled = 0;
+  for (const raw of lines.slice(0, 20)) {
+    const parts = raw.split(re).map((s) => s.trim()).filter(Boolean);
+    for (const p of parts) {
+      // Considera só tokens "numéricos" (dígitos + um separador decimal opcional + sinal).
+      if (!/^[-+]?\d+([.,]\d+)?$/.test(p)) continue;
+      sampled++;
+      if (p.includes(",")) comma++;
+      else if (p.includes(".")) dot++;
+    }
+  }
+  if (comma === 0 && dot === 0) {
+    return { decimal: ".", confidence: "low", stats: { sampled, comma, dot } };
+  }
+  const decimal: "." | "," = comma > dot ? "," : ".";
+  const winner = Math.max(comma, dot);
+  const loser = Math.min(comma, dot);
+  const total = winner + loser;
+  const confidence: "high" | "low" =
+    total >= 3 && winner / total >= 0.8 ? "high" : "low";
+  return { decimal, confidence, stats: { sampled, comma, dot } };
+}
+
 export type DetectionResult = {
   preset: keyof typeof TXT_PRESETS;
   /** "high" só quando vence com folga (≥75% e ≥3 votos de margem). "low" caso contrário. */
