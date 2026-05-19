@@ -174,6 +174,8 @@ export default function RouteMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickCatcher onClick={onClick} />
+        <ReadySignal onReady={onReady} />
+
 
         {start && (
           <Marker position={[start.lat, start.lng]}>
