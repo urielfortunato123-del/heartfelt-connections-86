@@ -202,6 +202,22 @@ export default function RouteMap({
     };
   }, []);
 
+  // Cleanup final: remove a instância do Leaflet ao desmontar para liberar
+  // listeners de tiles/eventos e evitar callbacks tardios em estado já desmontado.
+  useEffect(() => {
+    return () => {
+      const map = mapRef.current;
+      if (!map) return;
+      try {
+        map.off();
+        map.remove();
+      } catch {
+        /* ignore */
+      }
+      mapRef.current = null;
+    };
+  }, []);
+
   return (
     <div className="relative h-[480px] w-full overflow-hidden rounded-lg border border-white/10">
       <div className="absolute left-2 top-2 z-[400] rounded bg-black/70 px-3 py-1 text-xs text-white">
