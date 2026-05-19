@@ -739,7 +739,7 @@ export default function RouteMap({
           const dy = ov.offset?.dy ?? 0;
           const shift = (p: [number, number]): [number, number] => [p[0] + dy, p[1] + dx];
           return (
-            <div key={ov.id} style={{ display: "contents" }}>
+            <Fragment key={ov.id}>
               {ov.polylines.map((pl, i) => (
                 <Polyline
                   key={`${ov.id}-pl-${i}`}
@@ -765,7 +765,7 @@ export default function RouteMap({
                   {p.label && <Tooltip direction="top">{p.label}</Tooltip>}
                 </CircleMarker>
               ))}
-            </div>
+            </Fragment>
           );
         })}
 
