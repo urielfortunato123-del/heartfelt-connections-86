@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -198,6 +199,10 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<ImportedDataset | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ value: number; label: string } | null>(null);
+  const setStage = useCallback((value: number, label: string) => {
+    setProgress({ value: Math.max(0, Math.min(100, value)), label });
+  }, []);
   const [srs, setSrs] = useState("EPSG:31983");
   const [presetName, setPresetName] = useState<keyof typeof TXT_PRESETS>("PENZD (P,E,N,Z,D)");
   const [skipHeader, setSkipHeader] = useState(0);
@@ -282,6 +287,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
       setFile(null);
       setParsed(null);
       setBusy(false);
+      setProgress(null);
     }
   }, [open]);
 
@@ -372,11 +378,17 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
 
   const handleParse = async (f: File) => {
     setBusy(true);
+    setStage(35, `Lendo arquivo "${f.name}" (${Math.round(f.size / 1024)} KB)…`);
     try {
       log(`Lendo arquivo "${f.name}" (${Math.round(f.size / 1024)} KB)…`);
       const isDxfFile = f.name.toLowerCase().endsWith(".dxf");
-      log(isDxfFile ? "Interpretando entidades DXF…" : "Interpretando pontos topográficos…");
+      const parseLabel = isDxfFile ? "Interpretando entidades DXF…" : "Interpretando pontos topográficos…";
+      setStage(60, parseLabel);
+      log(parseLabel);
+      // Cede o frame para a UI pintar a barra antes do parse pesado.
+      await new Promise((r) => setTimeout(r, 0));
       const ds = isDxfFile ? await parseDxf(f) : await parseTopoTxt(f, txtFormat);
+      setStage(90, "Calculando geometria e bounding box…");
       log(
         `Parse OK: ${ds.polylines.length} polilinha(s), ${ds.points.length} ponto(s).`,
         "ok",
@@ -385,12 +397,16 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
         log("Nenhuma geometria encontrada — verifique formato/separador/cabeçalho.", "warn");
       }
       setParsed(ds);
+      setStage(100, "Pronto.");
     } catch (err) {
       const m = err instanceof Error ? err.message : "Falha ao ler o arquivo.";
       toast.error(m);
       log(`Falha na leitura: ${m}`, "error");
+      setStage(100, `Falha: ${m}`);
     } finally {
       setBusy(false);
+      // Esconde a barra após um instante para o usuário ver o "Pronto".
+      window.setTimeout(() => setProgress(null), 800);
     }
   };
 
@@ -406,12 +422,14 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     setDetection(null);
     setDecimalInfo(null);
     if (!f) return;
+    setProgress({ value: 5, label: `Preparando "${f.name}"…` });
     const isTxtFile = f.name.toLowerCase().endsWith(".txt") || f.name.toLowerCase().endsWith(".csv");
     if (isTxtFile) {
       // 1) Detecta o separador decimal (vírgula vs ponto) antes de qualquer parse,
       //    para evitar erros silenciosos (ex.: "7.534,21" lido como 7.534).
       let effectiveDecimal: "." | "," = decimal;
       try {
+        setStage(12, "Detectando separador decimal (vírgula vs ponto)…");
         log("Detectando separador decimal (vírgula vs ponto)…");
         const dec = await detectDecimalSeparator(f, skipHeader);
         setDecimalInfo({
@@ -445,6 +463,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
         log(`Detecção cancelada: limiares inválidos. ${msgs}`, "warn");
         setDetection(null);
       } else try {
+        setStage(22, "Detectando formato do arquivo…");
         log(
           `Detectando formato (min=${thresholds.minSamples}, ratio=${thresholds.ratio.toFixed(2)}, margem=${thresholds.margin})…`,
         );
@@ -542,6 +561,23 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
         <DialogHeader className="border-b border-white/10 px-6 py-4">
           <DialogTitle>Importar desenho ou pontos topográficos</DialogTitle>
         </DialogHeader>
+
+        {(busy || progress) && (
+          <div
+            className="space-y-1 border-b border-white/10 bg-black/40 px-6 py-3"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-2 text-xs text-white/80">
+              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span className="truncate">{progress?.label ?? "Processando…"}</span>
+              <span className="ml-auto tabular-nums text-white/50">
+                {Math.round(progress?.value ?? 0)}%
+              </span>
+            </div>
+            <Progress value={progress?.value ?? 0} className="h-1.5" />
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="space-y-4">
