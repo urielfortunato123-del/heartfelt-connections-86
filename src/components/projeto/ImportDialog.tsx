@@ -1,7 +1,7 @@
 // Diálogo de importação: aceita .dxf e .txt/.csv, deixa o usuário escolher
 // o SRC, mapear o formato do TXT, e preview básico (contagem + bbox).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
