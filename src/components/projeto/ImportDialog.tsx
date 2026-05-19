@@ -1108,6 +1108,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                     {parsed.bbox.minY.toFixed(2)} → {parsed.bbox.maxY.toFixed(2)}]
                   </div>
                 )}
+                <PreviewCanvas parsed={parsed} />
                 {parsed.georef && (
                   <div className="text-amber-300">⚠ {parsed.georef.hint}</div>
                 )}
