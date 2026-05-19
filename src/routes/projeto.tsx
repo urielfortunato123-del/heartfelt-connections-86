@@ -248,6 +248,19 @@ function ProjetoPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [overlays, setOverlays] = useState<OverlayFeature[]>([]);
   const [draggingOverlayId, setDraggingOverlayId] = useState<string | null>(null);
+  // Log/status do pipeline de importação (visível sobre o mapa).
+  type ImportLog = { id: number; ts: number; msg: string; level: "info" | "ok" | "warn" | "error" };
+  const [importLog, setImportLog] = useState<ImportLog[]>([]);
+  const pushImportLog = useCallback(
+    (msg: string, level: ImportLog["level"] = "info") => {
+      setImportLog((prev) => {
+        const entry: ImportLog = { id: Date.now() + Math.random(), ts: Date.now(), msg, level };
+        const next = [...prev, entry];
+        return next.slice(-8);
+      });
+    },
+    [],
+  );
 
   const handleImportOverlay = useCallback((ov: OverlayFeature) => {
     setOverlays((prev) => [...prev, ov]);
