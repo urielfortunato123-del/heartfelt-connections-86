@@ -113,6 +113,40 @@ export default function RouteMap({
   const VIEW_KEY = "pista.mapView.v1";
   const polylineSignatureRef = useRef<string>("");
   const userInteractedRef = useRef<boolean>(false);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Wrappers que ignoram chamadas tardias do Leaflet após desmontar.
+  const safeOnClick = useCallback(
+    (ll: LatLng) => {
+      if (!mountedRef.current) return;
+      onClick(ll);
+    },
+    [onClick],
+  );
+  const safeOnReady = useCallback(() => {
+    if (!mountedRef.current) return;
+    onReady?.();
+  }, [onReady]);
+  const safeOnMovePoint = useCallback(
+    (id: string, ll: LatLng) => {
+      if (!mountedRef.current) return;
+      onMovePoint?.(id, ll);
+    },
+    [onMovePoint],
+  );
+  const safeOnMovePointEnd = useCallback(
+    (id: string) => {
+      if (!mountedRef.current) return;
+      onMovePointEnd?.(id);
+    },
+    [onMovePointEnd],
+  );
 
   // Restaura view persistida (ou usa start/default) — só leitura inicial, não muda em re-render.
   const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
