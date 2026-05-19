@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, FileDown, FileSpreadsheet, FileText, MapPin, Plus, Route as RouteIcon, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, FileDown, FileSpreadsheet, FileText, Loader2, MapPin, Plus, Route as RouteIcon, Search, Trash2, Upload, Wand2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   nearestOnRoute,
   type LL,
 } from "@/lib/projeto/geo";
+import { searchRodoviaByRef, type RodoviaResult } from "@/lib/projeto/rodovia";
 import {
   DEFAULT_BOTH_LAYOUT,
   DEFAULT_GRID_LAYOUT,
@@ -164,6 +165,84 @@ function ProjetoPage() {
     endKm: 0,
     step: 1,
   });
+
+  // Busca de rodovia (Overpass / OpenStreetMap)
+  const [searchTerm, setSearchTerm] = useState("SP-261");
+  const [searching, setSearching] = useState(false);
+  const [rodovia, setRodovia] = useState<RodoviaResult | null>(null);
+  const [fitBbox, setFitBbox] = useState<
+    { south: number; west: number; north: number; east: number; key: number } | null
+  >(null);
+
+  const handleSearchRoad = useCallback(async () => {
+    const term = searchTerm.trim();
+    if (!term) return;
+    setSearching(true);
+    try {
+      const result = await searchRodoviaByRef(term);
+      setRodovia(result);
+      setFitBbox({ ...result.bbox, key: Date.now() });
+      setMeta((m) => ({ ...m, name: result.ref }));
+      toast.success(`Rodovia ${result.ref} encontrada (~${result.totalKm.toFixed(1)} km).`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha na busca da rodovia.");
+    } finally {
+      setSearching(false);
+    }
+  }, [searchTerm]);
+
+  const handleSuggestStartEnd = useCallback(() => {
+    if (!rodovia || rodovia.stitched.length < 2) {
+      toast.error("Busque uma rodovia antes de sugerir início/fim.");
+      return;
+    }
+    const { stitched } = rodovia;
+    // cumulativo ao longo da rodovia destacada
+    const cum: number[] = [0];
+    for (let i = 1; i < stitched.length; i++) {
+      cum.push(
+        cum[i - 1] +
+          Math.hypot(
+            (stitched[i][0] - stitched[i - 1][0]) * 111,
+            (stitched[i][1] - stitched[i - 1][1]) *
+              111 *
+              Math.cos((stitched[i][0] * Math.PI) / 180),
+          ),
+      );
+    }
+    const total = cum[cum.length - 1];
+    const startKm = Math.min(meta.startKm, meta.endKm);
+    const endKm = Math.max(meta.startKm, meta.endKm);
+    const startOffset =
+      meta.direction === "asc" ? startKm - meta.startKm : meta.startKm - endKm;
+    // Quando ainda não há km final, distribui pela rodovia inteira.
+    const useFullRange = meta.endKm === meta.startKm;
+    const targetA = useFullRange ? 0 : Math.max(0, Math.min(total, startOffset));
+    const targetB = useFullRange
+      ? total
+      : Math.max(0, Math.min(total, targetA + Math.abs(endKm - startKm)));
+    const pickAt = (target: number): LL => {
+      let lo = 0;
+      let hi = cum.length - 1;
+      while (lo < hi - 1) {
+        const mid = (lo + hi) >> 1;
+        if (cum[mid] <= target) lo = mid;
+        else hi = mid;
+      }
+      const seg = cum[hi] - cum[lo] || 1;
+      const t = (target - cum[lo]) / seg;
+      return {
+        lat: stitched[lo][0] + t * (stitched[hi][0] - stitched[lo][0]),
+        lng: stitched[lo][1] + t * (stitched[hi][1] - stitched[lo][1]),
+      };
+    };
+    const a = pickAt(targetA);
+    const b = pickAt(targetB);
+    setStart(a);
+    setEnd(b);
+    toast.success("Início e fim sugeridos sobre a rodovia destacada.");
+  }, [rodovia, meta]);
+
 
   const [start, setStart] = useState<LL | null>(null);
   const [end, setEnd] = useState<LL | null>(null);
@@ -575,6 +654,53 @@ function ProjetoPage() {
           </div>
 
           <div className="space-y-1">
+            <Label>Buscar rodovia no mapa</Label>
+            <div className="flex gap-2">
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSearchRoad();
+                  }
+                }}
+                placeholder="Ex.: SP-261, BR-116"
+              />
+              <Button
+                type="button"
+                onClick={handleSearchRoad}
+                disabled={searching || !searchTerm.trim()}
+                title="Localiza a rodovia no OpenStreetMap e destaca no mapa"
+              >
+                {searching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            {rodovia && (
+              <div className="flex items-center justify-between gap-2 rounded border border-cyan-400/20 bg-cyan-400/5 px-2 py-1 text-xs text-white/80">
+                <span>
+                  <b className="text-cyan-300">{rodovia.ref}</b> · ~
+                  {rodovia.totalKm.toFixed(1)} km destacados
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSuggestStartEnd}
+                  title="Coloca início e fim sobre a rodovia destacada usando os km informados"
+                >
+                  <Wand2 className="mr-1 h-3 w-3" /> Sugerir início/fim
+                </Button>
+              </div>
+            )}
+          </div>
+
+
+          <div className="space-y-1">
             <Label>Sentido</Label>
             <div className="grid grid-cols-2 gap-2">
               <Button
@@ -785,6 +911,8 @@ function ProjetoPage() {
                 mode={mode}
                 onClick={handleMapClick}
                 onReady={() => setMapReady(true)}
+                highlightedRoad={rodovia?.ways}
+                fitBbox={fitBbox}
                 onUpdatePoint={(id, patch) =>
                   commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                 }
