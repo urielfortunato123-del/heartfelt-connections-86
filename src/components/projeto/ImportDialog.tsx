@@ -52,14 +52,49 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
   const [presetName, setPresetName] = useState<keyof typeof TXT_PRESETS>("PENZD (P,E,N,Z,D)");
   const [skipHeader, setSkipHeader] = useState(0);
   const [decimal, setDecimal] = useState<"." | ",">(".");
-  const [thresholds, setThresholds] = useState<DetectionThresholds>(DEFAULT_THRESHOLDS);
+  const [thresholds, setThresholds] = useState<DetectionThresholds>(() => {
+    if (typeof window === "undefined") return DEFAULT_THRESHOLDS;
+    try {
+      const raw = window.localStorage.getItem("import.thresholds");
+      if (!raw) return DEFAULT_THRESHOLDS;
+      const parsed = JSON.parse(raw);
+      return {
+        minSamples:
+          typeof parsed.minSamples === "number" ? parsed.minSamples : DEFAULT_THRESHOLDS.minSamples,
+        ratio: typeof parsed.ratio === "number" ? parsed.ratio : DEFAULT_THRESHOLDS.ratio,
+        margin: typeof parsed.margin === "number" ? parsed.margin : DEFAULT_THRESHOLDS.margin,
+      };
+    } catch {
+      return DEFAULT_THRESHOLDS;
+    }
+  });
   /**
    * Política de auto-aplicação do preset detectado:
    *   - "off":  nunca sobrescreve o preset atual (apenas loga sugestão).
    *   - "high": só auto-aplica quando confiança = ALTA (padrão).
    *   - "any":  auto-aplica em qualquer confiança (também em BAIXA).
    */
-  const [autoApply, setAutoApply] = useState<"off" | "high" | "any">("high");
+  const [autoApply, setAutoApply] = useState<"off" | "high" | "any">(() => {
+    if (typeof window === "undefined") return "high";
+    const v = window.localStorage.getItem("import.autoApply");
+    return v === "off" || v === "high" || v === "any" ? v : "high";
+  });
+
+  // Persiste preferências entre aberturas do diálogo.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("import.thresholds", JSON.stringify(thresholds));
+    } catch {
+      /* ignore */
+    }
+  }, [thresholds]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("import.autoApply", autoApply);
+    } catch {
+      /* ignore */
+    }
+  }, [autoApply]);
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [decimalInfo, setDecimalInfo] = useState<{
     decimal: "." | ",";
