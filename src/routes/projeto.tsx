@@ -973,6 +973,7 @@ function ProjetoPage() {
           <div className="relative">
             {RouteMap && (
               <RouteMap
+                viewKey={`${(meta.name || "sem-nome").trim().toLowerCase()}|${rodovia?.ref ?? ""}|${meta.startKm}|${meta.endKm}|${meta.direction}`}
                 start={start}
                 end={end}
                 polyline={polyline}
