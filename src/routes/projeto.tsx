@@ -127,6 +127,36 @@ function ProjetoPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // Carregamento robusto do RouteMap: só renderiza quando o módulo + Leaflet
+  // estão disponíveis no navegador. O placeholder permanece sobreposto até o
+  // próprio mapa sinalizar prontidão (whenReady), eliminando flicker.
+  const [RouteMap, setRouteMap] = useState<RouteMapComponent | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  useEffect(() => {
+    if (!mounted) return;
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [mod] = await Promise.all([
+          import("@/components/projeto/RouteMap"),
+          import("leaflet"),
+        ]);
+        // Garante que a API do Leaflet está exposta globalmente antes de montar.
+        if (typeof (window as unknown as { L?: unknown }).L === "undefined") {
+          (window as unknown as { L: unknown }).L = (await import("leaflet")).default;
+        }
+        if (!cancelled) setRouteMap(() => mod.default as RouteMapComponent);
+      } catch (err) {
+        console.error("Falha ao carregar o RouteMap/Leaflet:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted]);
+
+
   const [meta, setMeta] = useState<ProjectMeta>({
     name: "SP-261",
     direction: "asc",
