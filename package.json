@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:ssr": "node scripts/test-ssr.mjs",
-    "test:map-placeholder": "node scripts/test-map-placeholder.mjs"
+    "test:map-placeholder": "node scripts/test-map-placeholder.mjs",
+    "test:ready-signal": "node scripts/test-ready-signal-cleanup.mjs"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
