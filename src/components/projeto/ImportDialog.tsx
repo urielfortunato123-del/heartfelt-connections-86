@@ -579,6 +579,68 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                     </div>
                   )}
 
+                  {detection.topSamples && detection.topSamples.length > 0 && (
+                    <details className="mt-3 rounded border border-white/10 bg-white/[0.03] p-2 text-[11px]">
+                      <summary className="cursor-pointer select-none text-white/70">
+                        Top {detection.topSamples.length} linha
+                        {detection.topSamples.length > 1 ? "s" : ""} que mais contribuíram
+                      </summary>
+                      <div className="mt-2 overflow-x-auto">
+                        <table className="w-full border-collapse font-mono text-[10.5px]">
+                          <thead className="text-left text-cyan-300/80">
+                            <tr>
+                              <th className="border-b border-white/10 px-2 py-1">#</th>
+                              <th className="border-b border-white/10 px-2 py-1">linha</th>
+                              <th className="border-b border-white/10 px-2 py-1">N</th>
+                              <th className="border-b border-white/10 px-2 py-1">E</th>
+                              <th className="border-b border-white/10 px-2 py-1">score</th>
+                              <th className="border-b border-white/10 px-2 py-1">motivo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {detection.topSamples.map((s, i) => (
+                              <tr key={`${s.lineNumber}-${i}`} className="text-white/80 odd:bg-white/[0.02]">
+                                <td className="border-b border-white/5 px-2 py-1 text-white/40">
+                                  {i + 1}
+                                </td>
+                                <td className="border-b border-white/5 px-2 py-1 text-white/50">
+                                  L{s.lineNumber}
+                                </td>
+                                <td className="border-b border-white/5 px-2 py-1 text-emerald-300">
+                                  {Number.isFinite(s.n) ? s.n.toLocaleString("pt-BR") : "—"}
+                                </td>
+                                <td className="border-b border-white/5 px-2 py-1 text-emerald-300">
+                                  {Number.isFinite(s.e) ? s.e.toLocaleString("pt-BR") : "—"}
+                                </td>
+                                <td
+                                  className={`border-b border-white/5 px-2 py-1 ${
+                                    s.score >= 5
+                                      ? "text-emerald-300"
+                                      : s.score <= 0
+                                      ? "text-amber-300"
+                                      : ""
+                                  }`}
+                                >
+                                  {s.score.toFixed(1)}
+                                </td>
+                                <td className="border-b border-white/5 px-2 py-1 text-white/60">
+                                  {s.reason}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="mt-1 text-[10px] text-white/40">
+                        Score combina aderência à faixa (UTM Sul / lat-lng) e a margem N vs E.
+                        Valores altos = linha "puxou" a detecção; valores baixos ou negativos =
+                        linha foi contra o preset.
+                      </p>
+                    </details>
+                  )}
+
+
+
                   <p className="mt-2 text-[10px] text-white/40">
                     Limiares atuais: mín={thresholds.minSamples} · ratio=
                     {thresholds.ratio.toFixed(2)} · margem={thresholds.margin}.
