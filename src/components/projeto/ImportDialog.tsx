@@ -31,11 +31,42 @@ function PreviewCanvas({ parsed }: { parsed: ImportedDataset }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerW, setContainerW] = useState(560);
 
   const bbox = parsed.bbox;
-  const W = 560;
-  const H = 280;
   const PAD = 12;
+
+  // Mede a largura disponível do container para o canvas se adaptar ao espaço.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setContainerW(Math.max(280, el.clientWidth || 560));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Calcula H a partir da razão de aspecto do bbox para "fit bounds" automático,
+  // mantendo limites razoáveis para não ficar nem fino demais nem ocupar a tela toda.
+  const { W, H } = useMemo(() => {
+    const W = containerW;
+    if (!bbox) return { W, H: 240 };
+    const dx = Math.max(1e-9, bbox.maxX - bbox.minX);
+    const dy = Math.max(1e-9, bbox.maxY - bbox.minY);
+    const innerW = W - PAD * 2;
+    // altura ideal mantém a proporção real do conteúdo
+    const idealInnerH = innerW * (dy / dx);
+    const innerH = Math.min(Math.max(idealInnerH, 160), 420);
+    return { W, H: Math.round(innerH + PAD * 2) };
+  }, [bbox, containerW]);
+
+  // Sempre que o conteúdo importado mudar, faz fit bounds (reseta zoom/pan).
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [parsed]);
 
   const transform = useMemo(() => {
     if (!bbox) return null;
@@ -52,7 +83,7 @@ function PreviewCanvas({ parsed }: { parsed: ImportedDataset }) {
       const py = H / 2 - (y - cy) * scale;
       return [px, py];
     };
-  }, [bbox]);
+  }, [bbox, W, H]);
 
   if (!bbox || !transform) {
     return (
@@ -74,11 +105,15 @@ function PreviewCanvas({ parsed }: { parsed: ImportedDataset }) {
   };
 
   return (
-    <div className="relative mt-2 overflow-hidden rounded border border-white/10 bg-black/60">
+    <div
+      ref={containerRef}
+      className="relative mt-2 overflow-hidden rounded border border-white/10 bg-black/60"
+    >
       <svg
         viewBox={`${vx} ${vy} ${vw} ${vh}`}
         width="100%"
         height={H}
+        preserveAspectRatio="xMidYMid meet"
         className="block touch-none select-none"
         onWheel={(e) => {
           e.preventDefault();
