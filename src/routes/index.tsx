@@ -464,9 +464,9 @@ function Index() {
       const text = `${formatNumber(value)} ${suffix}`;
       try {
         await navigator.clipboard.writeText(text);
-        toast.success("Copied", { description: `${unitLabel}: ${text}` });
+        toast.success("Copiado", { description: `${unitLabel}: ${text}` });
       } catch {
-        toast.error("Could not copy to clipboard");
+        toast.error("Não foi possível copiar");
       }
     },
     [],
@@ -476,9 +476,9 @@ function Index() {
     const url = window.location.href;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link copied", { description: url });
+      toast.success("Link copiado", { description: url });
     } catch {
-      toast.error("Could not copy link");
+      toast.error("Não foi possível copiar o link");
     }
   }, []);
 
@@ -489,7 +489,7 @@ function Index() {
     } catch {
       /* noop */
     }
-    toast("History cleared");
+    toast("Histórico limpo");
   }, []);
 
   // Derived
