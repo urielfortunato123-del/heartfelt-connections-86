@@ -469,6 +469,7 @@ export async function detectTxtPresetVerbose(
   const finalize = (
     preset: keyof typeof TXT_PRESETS,
     baseConfidence: "high" | "low",
+    decision?: DetectionResult["decision"],
   ): DetectionResult => {
     // Decide qual posição é N e qual é E neste preset.
     const order = TXT_PRESETS[preset].order;
