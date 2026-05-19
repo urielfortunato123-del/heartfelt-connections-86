@@ -71,16 +71,63 @@ export default function RouteMap({
 }: Props) {
 
   const mapRef = useRef<L.Map | null>(null);
-  const center = useMemo<[number, number]>(() => {
-    if (start) return [start.lat, start.lng];
-    return [-22.0154, -47.8911]; // SP central default
-  }, [start]);
+  const VIEW_KEY = "pista.mapView.v1";
+  const polylineSignatureRef = useRef<string>("");
+  const userInteractedRef = useRef<boolean>(false);
 
+  // Restaura view persistida (ou usa start/default) — só leitura inicial, não muda em re-render.
+  const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(VIEW_KEY);
+        if (raw) {
+          const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
+          if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
+            userInteractedRef.current = true; // respeita view persistida, não força fitBounds
+            return { center: [v.lat, v.lng], zoom: v.zoom };
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    if (start) return { center: [start.lat, start.lng], zoom: 11 };
+    return { center: [-22.0154, -47.8911], zoom: 11 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fit bounds APENAS quando a rota muda de identidade (novos endpoints), respeitando interação do usuário.
   useEffect(() => {
     if (!mapRef.current || polyline.length < 2) return;
+    const sig = `${polyline[0]?.join(",")}|${polyline[polyline.length - 1]?.join(",")}|${polyline.length}`;
+    if (sig === polylineSignatureRef.current) return;
+    polylineSignatureRef.current = sig;
+    if (userInteractedRef.current) return; // usuário já moveu o mapa — não realinha
     const bounds = L.latLngBounds(polyline.map(([a, b]) => L.latLng(a, b)));
     mapRef.current.fitBounds(bounds, { padding: [30, 30] });
   }, [polyline]);
+
+  // Persiste center/zoom em cada moveend/zoomend e marca interação manual.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const save = () => {
+      const c = map.getCenter();
+      const z = map.getZoom();
+      try {
+        window.localStorage.setItem(VIEW_KEY, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z }));
+      } catch { /* ignore */ }
+    };
+    const markInteracted = () => { userInteractedRef.current = true; };
+    map.on("moveend", save);
+    map.on("zoomend", save);
+    map.on("dragstart", markInteracted);
+    map.on("zoomstart", markInteracted);
+    return () => {
+      map.off("moveend", save);
+      map.off("zoomend", save);
+      map.off("dragstart", markInteracted);
+      map.off("zoomstart", markInteracted);
+    };
+  }, []);
 
   return (
     <div className="relative h-[480px] w-full overflow-hidden rounded-lg border border-white/10">
@@ -94,11 +141,12 @@ export default function RouteMap({
         ref={(m) => {
           mapRef.current = m as unknown as L.Map | null;
         }}
-        center={center}
-        zoom={11}
+        center={initialView.center}
+        zoom={initialView.zoom}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom
       >
+
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
