@@ -318,6 +318,26 @@ export default function RouteMap({
     }
   }, []);
 
+  const resetView = useCallback(() => {
+    const map = mapRef.current;
+    try {
+      window.localStorage.removeItem(VIEW_KEY);
+    } catch {
+      /* ignore */
+    }
+    userInteractedRef.current = false;
+    polylineSignatureRef.current = "";
+    if (!map) return;
+    if (polyline.length > 1) {
+      const bounds = L.latLngBounds(polyline.map(([a, b]) => L.latLng(a, b)));
+      map.fitBounds(bounds, { padding: [30, 30] });
+    } else if (start) {
+      map.setView([start.lat, start.lng], 11);
+    } else {
+      map.setView([-22.0154, -47.8911], 11);
+    }
+  }, [polyline, start]);
+
   // Em modo "arrastar overlay", desliga o pan do mapa para que o mouse mova só o overlay.
   useEffect(() => {
     const map = mapRef.current;
@@ -347,14 +367,24 @@ export default function RouteMap({
           {mode === "start" ? "Clique para marcar INÍCIO" : mode === "end" ? "Clique para marcar FIM" : "Clique para adicionar PONTO"}
         </span>
       </div>
-      <button
-        type="button"
-        onClick={toggleFullscreen}
-        className="absolute right-2 top-2 z-[400] rounded bg-black/70 px-3 py-1 text-xs font-medium text-white hover:bg-black/90"
-        title={isFullscreen ? "Sair de tela cheia" : "Tela cheia"}
-      >
-        {isFullscreen ? "↙ Sair" : "⛶ Tela cheia"}
-      </button>
+      <div className="absolute right-2 top-2 z-[400] flex gap-2">
+        <button
+          type="button"
+          onClick={resetView}
+          className="rounded bg-black/70 px-3 py-1 text-xs font-medium text-white hover:bg-black/90"
+          title="Redefinir zoom e centro do mapa (limpa persistência)"
+        >
+          ⟳ Redefinir vista
+        </button>
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="rounded bg-black/70 px-3 py-1 text-xs font-medium text-white hover:bg-black/90"
+          title={isFullscreen ? "Sair de tela cheia" : "Tela cheia"}
+        >
+          {isFullscreen ? "↙ Sair" : "⛶ Tela cheia"}
+        </button>
+      </div>
       <MapContainer
         ref={(m) => {
           mapRef.current = m as unknown as L.Map | null;
