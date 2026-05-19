@@ -8,6 +8,7 @@ import {
   CircleMarker,
   Popup,
   Tooltip,
+  useMap,
   useMapEvents,
 } from "react-leaflet";
 
