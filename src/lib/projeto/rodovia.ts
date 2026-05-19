@@ -28,13 +28,17 @@ function normalizeRef(input: string): string {
 function buildQuery(ref: string): string {
   // Aceita o ref normalizado e variações sem hífen / com zeros à esquerda.
   const alt = ref.replace("-", "");
-  return `[out:json][timeout:30];
+  // Restringe a busca ao território brasileiro — sem isso a Overpass roda out-of-memory
+  // ao varrer todas as rodovias do mundo só pelo ref.
+  return `[out:json][timeout:60];
+area["ISO3166-1"="BR"][admin_level=2]->.br;
 (
-  way["highway"]["ref"~"(^|;)${ref}($|;)"];
-  way["highway"]["ref"~"(^|;)${alt}($|;)"];
+  way["highway"]["ref"~"(^|;)${ref}($|;)"](area.br);
+  way["highway"]["ref"~"(^|;)${alt}($|;)"](area.br);
 );
 out geom;`;
 }
+
 
 async function fetchOverpass(query: string): Promise<unknown> {
   let lastErr: unknown = null;
