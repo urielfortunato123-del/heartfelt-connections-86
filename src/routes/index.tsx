@@ -124,11 +124,11 @@ function DerPanel({ km, setKm }: { km: number; setKm: (n: number) => void }) {
     }
   }, [prefs]);
 
-  // Estaca relativa ao km base, respeitando o sentido.
-  const offsetMeters = Math.max(
-    0,
-    Math.round((direction === "asc" ? km - kmBase : kmBase - km) * 1000),
-  );
+  // Estaca = distância absoluta entre km atual e km base.
+  // O sentido afeta apenas para que lado da base aplicamos novos valores
+  // (crescente: km > base; decrescente: km < base), mas a leitura é simétrica
+  // para que ambos os sentidos preencham estacas/hm corretamente.
+  const offsetMeters = Math.max(0, Math.round(Math.abs(km - kmBase) * 1000));
   const der = {
     estacas: Math.floor(offsetMeters / 20),
     extra: Math.round((offsetMeters - Math.floor(offsetMeters / 20) * 20) * 100) / 100,
