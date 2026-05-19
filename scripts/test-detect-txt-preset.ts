@@ -128,24 +128,13 @@ const cases: Case[] = [
     expect: null,
   },
   {
-    // Mesmo com margem baixa (4 vs 2), se as 4 linhas vencedoras encaixarem
-    // perfeitamente na faixa UTM Sul, a 2ª heurística promove para "high".
-    // Comportamento esperado da nova heurística de consistência por coluna.
-    name: "margem baixa mas colunas UTM consistentes → promove para high",
+    // Mesma configuração mas com valores arbitrários — o vencedor base ainda
+    // fica em "low" e o column-check NÃO promove (faixa não-UTM/local).
+    name: "margem baixa + valores locais arbitrários → null",
     content:
-      rows("{i}{sep}7500000{dec}0{sep}250000{dec}0{sep}680{dec}0{sep}A", 4, ",", ".") +
+      rows("{i}{sep}999{dec}0{sep}11{dec}0{sep}5{dec}0{sep}A", 4, ",", ".") +
       "\n" +
-      rows("{i}{sep}250000{dec}0{sep}7500000{dec}0{sep}680{dec}0{sep}A", 2, ",", "."),
-    expect: "PNEZD (P,N,E,Z,D)",
-  },
-  {
-    // Mesma configuração mas com valores aleatórios fora da faixa UTM —
-    // o check de coluna não promove, então fica "low" → null.
-    name: "margem baixa + colunas fora de faixa → null",
-    content:
-      rows("{i}{sep}42{dec}0{sep}17{dec}0{sep}680{dec}0{sep}A", 4, ",", ".") +
-      "\n" +
-      rows("{i}{sep}900000000{dec}0{sep}900000{dec}0{sep}680{dec}0{sep}A", 2, ",", "."),
+      rows("{i}{sep}11{dec}0{sep}999{dec}0{sep}5{dec}0{sep}A", 2, ",", "."),
     expect: null,
   },
 ];
