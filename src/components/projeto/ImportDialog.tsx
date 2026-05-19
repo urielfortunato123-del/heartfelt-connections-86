@@ -463,6 +463,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
         log(`Detecção cancelada: limiares inválidos. ${msgs}`, "warn");
         setDetection(null);
       } else try {
+        setStage(22, "Detectando formato do arquivo…");
         log(
           `Detectando formato (min=${thresholds.minSamples}, ratio=${thresholds.ratio.toFixed(2)}, margem=${thresholds.margin})…`,
         );
