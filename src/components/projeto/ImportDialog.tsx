@@ -422,12 +422,14 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     setDetection(null);
     setDecimalInfo(null);
     if (!f) return;
+    setProgress({ value: 5, label: `Preparando "${f.name}"…` });
     const isTxtFile = f.name.toLowerCase().endsWith(".txt") || f.name.toLowerCase().endsWith(".csv");
     if (isTxtFile) {
       // 1) Detecta o separador decimal (vírgula vs ponto) antes de qualquer parse,
       //    para evitar erros silenciosos (ex.: "7.534,21" lido como 7.534).
       let effectiveDecimal: "." | "," = decimal;
       try {
+        setStage(12, "Detectando separador decimal (vírgula vs ponto)…");
         log("Detectando separador decimal (vírgula vs ponto)…");
         const dec = await detectDecimalSeparator(f, skipHeader);
         setDecimalInfo({
