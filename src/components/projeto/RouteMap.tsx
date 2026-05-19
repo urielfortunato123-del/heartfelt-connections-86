@@ -100,6 +100,32 @@ function ReadySignal({ onReady }: { onReady?: () => void }) {
 }
 
 
+function OverlayDragHandler({
+  id,
+  onDrag,
+}: {
+  id: string;
+  onDrag: (id: string, deltaLat: number, deltaLng: number) => void;
+}) {
+  const lastRef = useRef<{ lat: number; lng: number } | null>(null);
+  useMapEvents({
+    mousedown(e) {
+      lastRef.current = { lat: e.latlng.lat, lng: e.latlng.lng };
+    },
+    mousemove(e) {
+      if (!lastRef.current) return;
+      const dLat = e.latlng.lat - lastRef.current.lat;
+      const dLng = e.latlng.lng - lastRef.current.lng;
+      lastRef.current = { lat: e.latlng.lat, lng: e.latlng.lng };
+      onDrag(id, dLat, dLng);
+    },
+    mouseup() {
+      lastRef.current = null;
+    },
+  });
+  return null;
+}
+
 function ClickCatcher({ onClick }: { onClick: (l: LatLng) => void }) {
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
