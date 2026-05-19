@@ -562,6 +562,23 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
           <DialogTitle>Importar desenho ou pontos topográficos</DialogTitle>
         </DialogHeader>
 
+        {(busy || progress) && (
+          <div
+            className="space-y-1 border-b border-white/10 bg-black/40 px-6 py-3"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-2 text-xs text-white/80">
+              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span className="truncate">{progress?.label ?? "Processando…"}</span>
+              <span className="ml-auto tabular-nums text-white/50">
+                {Math.round(progress?.value ?? 0)}%
+              </span>
+            </div>
+            <Progress value={progress?.value ?? 0} className="h-1.5" />
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="space-y-4">
           <div className="space-y-1">
