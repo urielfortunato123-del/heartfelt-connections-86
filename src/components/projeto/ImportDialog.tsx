@@ -95,6 +95,29 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
       /* ignore */
     }
   }, [autoApply]);
+
+  // Validação dos limiares — exibida inline e bloqueia a detecção quando inválida.
+  const thresholdErrors = useMemo(() => {
+    const errs: { minSamples?: string; ratio?: string; margin?: string } = {};
+    const { minSamples, ratio, margin } = thresholds;
+    if (!Number.isFinite(minSamples) || minSamples < 1 || minSamples > 50) {
+      errs.minSamples = "Use um inteiro entre 1 e 50.";
+    } else if (!Number.isInteger(minSamples)) {
+      errs.minSamples = "Deve ser um número inteiro.";
+    }
+    if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 1) {
+      errs.ratio = "Ratio deve estar entre 0 (exclusivo) e 1.";
+    } else if (ratio < 0.5) {
+      errs.ratio = "Valores < 0,5 tornam a detecção pouco confiável.";
+    }
+    if (!Number.isFinite(margin) || margin < 0 || margin > 100) {
+      errs.margin = "Margem deve estar entre 0 e 100.";
+    } else if (!Number.isInteger(margin)) {
+      errs.margin = "Deve ser um número inteiro.";
+    }
+    return errs;
+  }, [thresholds]);
+  const hasThresholdErrors = Object.keys(thresholdErrors).length > 0;
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [decimalInfo, setDecimalInfo] = useState<{
     decimal: "." | ",";
