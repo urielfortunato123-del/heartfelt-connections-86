@@ -9,7 +9,7 @@
 // Rode com:  bun scripts/test-detect-txt-preset.ts
 //        ou: npm run test:detect-txt
 
-import { detectTxtPreset, TXT_PRESETS } from "../src/lib/projeto/importers";
+import { detectTxtPreset, detectTxtPresetVerbose, TXT_PRESETS } from "../src/lib/projeto/importers";
 
 const RED = "\x1b[31m";
 const GREEN = "\x1b[32m";
