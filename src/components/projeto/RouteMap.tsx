@@ -181,12 +181,15 @@ export default function RouteMap({
   overlays,
   draggingOverlayId,
   onOverlayDrag,
+  viewKey,
 }: Props) {
 
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const VIEW_KEY = "pista.mapView.v1";
+  const VIEW_KEY_BASE = "pista.mapView.v1";
+  const storageKey = `${VIEW_KEY_BASE}:${viewKey ?? "default"}`;
+  const storageKeyRef = useRef(storageKey);
   const polylineSignatureRef = useRef<string>("");
   const userInteractedRef = useRef<boolean>(false);
   const mountedRef = useRef(true);
