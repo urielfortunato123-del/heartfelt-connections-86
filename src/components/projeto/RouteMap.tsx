@@ -267,9 +267,34 @@ export default function RouteMap({
       return { center: [initialSaved.lat, initialSaved.lng], zoom: initialSaved.zoom };
     }
     if (start) return { center: [start.lat, start.lng], zoom: 11 };
+    // Fallback: SP central. Será sobrescrito por geolocalização logo após mount.
     return { center: [-22.0154, -47.8911], zoom: 11 };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSaved]);
+
+  // Geolocalização do usuário no primeiro mount, quando não há view salva nem
+  // ponto inicial — abre o mapa onde o usuário está em vez do fallback SP.
+  useEffect(() => {
+    if (initialSaved || start) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        const map = mapRef.current;
+        if (!map || userInteractedRef.current) return;
+        map.setView([pos.coords.latitude, pos.coords.longitude], 13, { animate: true });
+      },
+      () => {
+        /* permissão negada / indisponível — mantém fallback */
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60_000 },
+    );
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Default e estado inicial dos visuais (apenas no primeiro mount).
   const DEFAULT_BASE = "Padrão (OSM)";
