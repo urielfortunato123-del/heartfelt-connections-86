@@ -447,7 +447,7 @@ function ProjetoPage() {
   }, [kmMarkers, manuals, descriptions, meta.direction]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="dark min-h-screen bg-slate-950 text-white">
       <header className="border-b border-white/10 bg-slate-900/60 px-6 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
