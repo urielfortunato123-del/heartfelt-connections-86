@@ -200,32 +200,31 @@ export default function RouteMap({
     };
   }, []);
 
-  // Wrappers que ignoram chamadas tardias do Leaflet após desmontar.
-  const safeOnClick = useCallback(
-    (ll: LatLng) => {
-      if (!mountedRef.current) return;
-      onClick(ll);
-    },
-    [onClick],
-  );
+  // Mantém SEMPRE a última versão dos handlers em refs. Isso permite que os
+  // wrappers `safeOn*` sejam estáveis (sem dependências), evitando re-render
+  // do MapContainer e duplicação de listeners do Leaflet ao trocar de rota
+  // ou quando o pai redefine inline as funções a cada render.
+  const handlersRef = useRef({ onClick, onReady, onMovePoint, onMovePointEnd });
+  useEffect(() => {
+    handlersRef.current = { onClick, onReady, onMovePoint, onMovePointEnd };
+  }, [onClick, onReady, onMovePoint, onMovePointEnd]);
+
+  const safeOnClick = useCallback((ll: LatLng) => {
+    if (!mountedRef.current) return;
+    handlersRef.current.onClick(ll);
+  }, []);
   const safeOnReady = useCallback(() => {
     if (!mountedRef.current) return;
-    onReady?.();
-  }, [onReady]);
-  const safeOnMovePoint = useCallback(
-    (id: string, ll: LatLng) => {
-      if (!mountedRef.current) return;
-      onMovePoint?.(id, ll);
-    },
-    [onMovePoint],
-  );
-  const safeOnMovePointEnd = useCallback(
-    (id: string) => {
-      if (!mountedRef.current) return;
-      onMovePointEnd?.(id);
-    },
-    [onMovePointEnd],
-  );
+    handlersRef.current.onReady?.();
+  }, []);
+  const safeOnMovePoint = useCallback((id: string, ll: LatLng) => {
+    if (!mountedRef.current) return;
+    handlersRef.current.onMovePoint?.(id, ll);
+  }, []);
+  const safeOnMovePointEnd = useCallback((id: string) => {
+    if (!mountedRef.current) return;
+    handlersRef.current.onMovePointEnd?.(id);
+  }, []);
 
   // Restaura view persistida (ou usa start/default) — só leitura inicial, não muda em re-render.
   const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
