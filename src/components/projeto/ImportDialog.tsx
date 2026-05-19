@@ -449,6 +449,92 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
             </details>
           )}
 
+          {isTxt && (detection || decimalInfo) && (
+            <div className="rounded border border-white/10 bg-black/30 p-3 text-[11px] text-white/80">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[11px] uppercase tracking-wider text-white/60">
+                  Estatísticas da detecção
+                </span>
+                {detection && (
+                  <span
+                    className={`rounded px-2 py-0.5 font-mono text-[10px] ${
+                      detection.confidence === "high"
+                        ? "bg-emerald-500/15 text-emerald-300"
+                        : "bg-amber-500/15 text-amber-300"
+                    }`}
+                  >
+                    {detection.confidence === "high" ? "ALTA confiança" : "BAIXA confiança"}
+                  </span>
+                )}
+              </div>
+
+              {decimalInfo && (
+                <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 font-mono">
+                  <span>
+                    Decimal:{" "}
+                    <b className="text-cyan-300">"{decimalInfo.decimal}"</b>{" "}
+                    <span className="text-white/40">({decimalInfo.confidence})</span>
+                  </span>
+                  <span className="text-white/60">
+                    vírgulas={decimalInfo.comma} · pontos={decimalInfo.dot}
+                  </span>
+                </div>
+              )}
+
+              {detection && (
+                <>
+                  <div className="mb-2 font-mono">
+                    Preset sugerido: <b className="text-cyan-300">{detection.preset}</b> ·
+                    amostras analisadas: <b>{detection.stats.sampled}</b>{" "}
+                    <span className="text-white/40">
+                      (com ID: {detection.stats.withId} · sem ID: {detection.stats.withoutId})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono sm:grid-cols-3">
+                    <div>
+                      <span className="text-white/50">PNEZD (N&gt;E, com ID):</span>{" "}
+                      <b>{detection.stats.aGtB_id}</b>
+                    </div>
+                    <div>
+                      <span className="text-white/50">PENZD (E&gt;N, com ID):</span>{" "}
+                      <b>{detection.stats.bGtA_id}</b>
+                    </div>
+                    <div>
+                      <span className="text-white/50">NEZ (N&gt;E, sem ID):</span>{" "}
+                      <b>{detection.stats.aGtB_noid}</b>
+                    </div>
+                    <div>
+                      <span className="text-white/50">ENZ (E&gt;N, sem ID):</span>{" "}
+                      <b>{detection.stats.bGtA_noid}</b>
+                    </div>
+                    <div>
+                      <span className="text-white/50">GNSS (lat/lng):</span>{" "}
+                      <b
+                        className={
+                          detection.stats.sampled > 0 &&
+                          detection.stats.latLngHits / detection.stats.sampled >= 0.8
+                            ? "text-emerald-300"
+                            : ""
+                        }
+                      >
+                        {detection.stats.latLngHits}
+                      </b>
+                      <span className="text-white/40">/{detection.stats.sampled}</span>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[10px] text-white/40">
+                    Limiares atuais: mín={thresholds.minSamples} · ratio=
+                    {thresholds.ratio.toFixed(2)} · margem={thresholds.margin}.
+                    {detection.confidence === "low" &&
+                      " Para auto-aplicar este preset, afrouxe os limiares acima ou troque manualmente."}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+
+
 
 
           {isTxt && previewRows.length > 0 && (
