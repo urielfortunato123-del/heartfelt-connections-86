@@ -227,38 +227,61 @@ export default function RouteMap({
   }, []);
 
   // Restaura view persistida (ou usa start/default) — só leitura inicial, não muda em re-render.
+  type SavedView = {
+    lat: number;
+    lng: number;
+    zoom: number;
+    baseLayer?: string;
+    overlays?: string[];
+  };
+
+  // Restaura view persistida (ou usa start/default) — só leitura inicial, não muda em re-render.
+  // Inclui também as configurações visuais (camada base ativa + overlays habilitados),
+  // que só podem ser honradas via `checked` no mount do LayersControl.
+  const initialSaved = useMemo<SavedView | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const currentKey = storageKeyRef.current;
+      const LEGACY_KEY = "pista.mapView.v1";
+      if (currentKey !== LEGACY_KEY) {
+        const legacy = window.localStorage.getItem(LEGACY_KEY);
+        const existing = window.localStorage.getItem(currentKey);
+        if (legacy && !existing) window.localStorage.setItem(currentKey, legacy);
+        if (legacy) window.localStorage.removeItem(LEGACY_KEY);
+      }
+      const raw = window.localStorage.getItem(currentKey);
+      if (!raw) return null;
+      const v = JSON.parse(raw) as SavedView;
+      if (!Number.isFinite(v.lat) || !Number.isFinite(v.lng) || !Number.isFinite(v.zoom)) return null;
+      return v;
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const currentKey = storageKeyRef.current;
-        // Migração: chave antiga global → nova chave por projeto/filtros.
-        // Só copia se a nova chave ainda não existir, para não sobrescrever
-        // uma view já salva pelo contexto atual. Remove a antiga após copiar.
-        const LEGACY_KEY = "pista.mapView.v1";
-        if (currentKey !== LEGACY_KEY) {
-          const legacy = window.localStorage.getItem(LEGACY_KEY);
-          const existing = window.localStorage.getItem(currentKey);
-          if (legacy && !existing) {
-            window.localStorage.setItem(currentKey, legacy);
-          }
-          if (legacy) {
-            window.localStorage.removeItem(LEGACY_KEY);
-          }
-        }
-        const raw = window.localStorage.getItem(currentKey);
-        if (raw) {
-          const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
-          if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
-            userInteractedRef.current = true; // respeita view persistida, não força fitBounds
-            return { center: [v.lat, v.lng], zoom: v.zoom };
-          }
-        }
-      } catch { /* ignore */ }
+    if (initialSaved) {
+      userInteractedRef.current = true; // respeita view persistida, não força fitBounds
+      return { center: [initialSaved.lat, initialSaved.lng], zoom: initialSaved.zoom };
     }
     if (start) return { center: [start.lat, start.lng], zoom: 11 };
     return { center: [-22.0154, -47.8911], zoom: 11 };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialSaved]);
+
+  // Default e estado inicial dos visuais (apenas no primeiro mount).
+  const DEFAULT_BASE = "Padrão (OSM)";
+  const initialBaseLayer = initialSaved?.baseLayer ?? DEFAULT_BASE;
+  const initialOverlaysSet = useMemo(
+    () => new Set(initialSaved?.overlays ?? []),
+    [initialSaved],
+  );
+  // Estado em ref para que o save debounced sempre leia o valor mais recente.
+  const visualsRef = useRef<{ baseLayer: string; overlays: Set<string> }>({
+    baseLayer: initialBaseLayer,
+    overlays: new Set(initialOverlaysSet),
+  });
 
   // Reenquadramento inteligente:
   // - só refaz fitBounds quando o usuário não interagiu;
