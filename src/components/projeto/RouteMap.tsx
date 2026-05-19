@@ -688,6 +688,7 @@ export default function RouteMap({
         zoom={initialView.zoom}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom
+        preferCanvas
       >
         <LayersControl position="topright" collapsed>
           <BaseLayer checked={initialBaseLayer === "Padrão (OSM)"} name="Padrão (OSM)">
