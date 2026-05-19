@@ -231,7 +231,7 @@ export default function RouteMap({
   const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = window.localStorage.getItem(VIEW_KEY);
+        const raw = window.localStorage.getItem(storageKeyRef.current);
         if (raw) {
           const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
           if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
