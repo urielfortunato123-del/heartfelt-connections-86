@@ -49,6 +49,7 @@ function MapPlaceholder({ label }: { label: string }) {
     <div
       role="status"
       aria-live="polite"
+      data-testid="map-placeholder"
       className="relative flex h-[480px] w-full items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-slate-800/40"
     >
       <div
