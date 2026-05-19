@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  detectTxtPreset,
   parseDxf,
   parseTopoTxt,
   TXT_PRESETS,
@@ -103,10 +104,26 @@ export function ImportDialog({ open, onOpenChange, onImport }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetName, skipHeader, decimal]);
 
-  const handleFile = (f: File | null) => {
+  const handleFile = async (f: File | null) => {
     setFile(f);
     setParsed(null);
-    if (f) handleParse(f);
+    if (!f) return;
+    // Para TXT/CSV, detecta o preset automaticamente para evitar Norte/Leste invertidos.
+    const isTxtFile = f.name.toLowerCase().endsWith(".txt") || f.name.toLowerCase().endsWith(".csv");
+    if (isTxtFile) {
+      try {
+        const detected = await detectTxtPreset(f, decimal, skipHeader);
+        if (detected && detected !== presetName) {
+          setPresetName(detected);
+          toast.info(`Formato detectado: ${detected}`);
+          // O useEffect que observa presetName fará o parse com o formato certo.
+          return;
+        }
+      } catch {
+        // segue o fluxo normal se a detecção falhar
+      }
+    }
+    handleParse(f);
   };
 
   const handleConfirm = () => {

@@ -192,6 +192,83 @@ function toNum(s: string, decimal: "." | ","): number {
   return Number(norm);
 }
 
+/**
+ * Detecta heurísticamente o preset de TXT topográfico a partir do conteúdo bruto.
+ * Estratégia:
+ *  - identifica o separador na primeira linha de dados;
+ *  - amostra até 20 linhas com ≥4 colunas numéricas iniciadas por ID inteiro;
+ *  - se col1 e col2 caem em faixas de lat/lng → "Lat,Lng,Z (GNSS)";
+ *  - senão compara magnitudes: no Brasil (UTM sul) Norte > Leste, então
+ *    col1 > col2 ⇒ PNEZD; col2 > col1 ⇒ PENZD.
+ *  - sem ID inteiro na col0, decide entre NEZ/ENZ pela mesma regra.
+ * Devolve null se não tiver confiança suficiente (deixa o padrão atual).
+ */
+export async function detectTxtPreset(
+  file: File,
+  decimal: "." | "," = ".",
+  skipHeaderLines = 0,
+): Promise<keyof typeof TXT_PRESETS | null> {
+  const text = await file.text();
+  const lines = text
+    .split(/\r?\n/)
+    .slice(skipHeaderLines)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return null;
+
+  const sepStr = detectSeparator(lines[0]);
+  const re = sepStr === "\\s+" ? /\s+/ : new RegExp(sepStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+
+  let withId = 0;
+  let withoutId = 0;
+  let aGtB_id = 0; // col1 > col2 quando há ID
+  let bGtA_id = 0;
+  let aGtB_noid = 0;
+  let bGtA_noid = 0;
+  let latLngHits = 0;
+  let sampled = 0;
+
+  for (const raw of lines.slice(0, 20)) {
+    const parts = raw.split(re).map((s) => s.trim()).filter(Boolean);
+    if (parts.length < 3) continue;
+    const n0 = toNum(parts[0], decimal);
+    const n1 = toNum(parts[1], decimal);
+    const n2 = toNum(parts[2], decimal);
+    const n3 = parts[3] ? toNum(parts[3], decimal) : NaN;
+
+    const idLike = Number.isFinite(n0) && Number.isInteger(n0) && n0 >= 0 && parts[0].indexOf(".") < 0;
+
+    // Quando há ID na col0, os candidatos a Norte/Leste são col1/col2.
+    if (idLike && Number.isFinite(n1) && Number.isFinite(n2) && Number.isFinite(n3)) {
+      withId++;
+      sampled++;
+      if (Math.abs(n1) <= 90 && Math.abs(n2) <= 180) latLngHits++;
+      if (n1 > n2) aGtB_id++;
+      else if (n2 > n1) bGtA_id++;
+    } else if (!idLike && Number.isFinite(n0) && Number.isFinite(n1)) {
+      withoutId++;
+      sampled++;
+      if (Math.abs(n0) <= 90 && Math.abs(n1) <= 180) latLngHits++;
+      if (n0 > n1) aGtB_noid++;
+      else if (n1 > n0) bGtA_noid++;
+    }
+  }
+
+  if (sampled === 0) return null;
+
+  // Lat/Lng quando a maioria das amostras cabe nas faixas.
+  if (latLngHits / sampled >= 0.8) return "Lat,Lng,Z (GNSS)";
+
+  if (withId >= withoutId) {
+    if (aGtB_id > bGtA_id) return "PNEZD (P,N,E,Z,D)";
+    if (bGtA_id > aGtB_id) return "PENZD (P,E,N,Z,D)";
+    return null;
+  }
+  if (aGtB_noid > bGtA_noid) return "NEZ (N,E,Z)";
+  if (bGtA_noid > aGtB_noid) return "ENZ (E,N,Z)";
+  return null;
+}
+
 export async function parseTopoTxt(file: File, fmt: TxtFormat): Promise<ImportedDataset> {
   const text = await file.text();
   const allLines = text.split(/\r?\n/);
