@@ -367,14 +367,24 @@ export default function RouteMap({
           {mode === "start" ? "Clique para marcar INÍCIO" : mode === "end" ? "Clique para marcar FIM" : "Clique para adicionar PONTO"}
         </span>
       </div>
-      <button
-        type="button"
-        onClick={toggleFullscreen}
-        className="absolute right-2 top-2 z-[400] rounded bg-black/70 px-3 py-1 text-xs font-medium text-white hover:bg-black/90"
-        title={isFullscreen ? "Sair de tela cheia" : "Tela cheia"}
-      >
-        {isFullscreen ? "↙ Sair" : "⛶ Tela cheia"}
-      </button>
+      <div className="absolute right-2 top-2 z-[400] flex gap-2">
+        <button
+          type="button"
+          onClick={resetView}
+          className="rounded bg-black/70 px-3 py-1 text-xs font-medium text-white hover:bg-black/90"
+          title="Redefinir zoom e centro do mapa (limpa persistência)"
+        >
+          ⟳ Redefinir vista
+        </button>
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="rounded bg-black/70 px-3 py-1 text-xs font-medium text-white hover:bg-black/90"
+          title={isFullscreen ? "Sair de tela cheia" : "Tela cheia"}
+        >
+          {isFullscreen ? "↙ Sair" : "⛶ Tela cheia"}
+        </button>
+      </div>
       <MapContainer
         ref={(m) => {
           mapRef.current = m as unknown as L.Map | null;
