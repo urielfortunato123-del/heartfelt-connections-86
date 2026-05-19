@@ -289,7 +289,12 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
         log("Detecção do decimal falhou — usando o atual.", "warn");
       }
 
-      try {
+      if (hasThresholdErrors) {
+        const msgs = Object.values(thresholdErrors).join(" ");
+        toast.error(`Limiares inválidos — corrija antes de detectar. ${msgs}`);
+        log(`Detecção cancelada: limiares inválidos. ${msgs}`, "warn");
+        setDetection(null);
+      } else try {
         log(
           `Detectando formato (min=${thresholds.minSamples}, ratio=${thresholds.ratio.toFixed(2)}, margem=${thresholds.margin})…`,
         );
