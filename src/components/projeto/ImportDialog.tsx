@@ -522,12 +522,65 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                       <span className="text-white/40">/{detection.stats.sampled}</span>
                     </div>
                   </div>
+
+                  {detection.columnCheck && (
+                    <div
+                      className={`mt-3 rounded border p-2 text-[11px] ${
+                        detection.columnCheck.promoted
+                          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                          : "border-white/10 bg-white/[0.03] text-white/70"
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="font-mono uppercase tracking-wider text-[10px]">
+                          Consistência por coluna
+                        </span>
+                        {detection.columnCheck.promoted && (
+                          <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[10px]">
+                            ↑ promoveu para ALTA
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-mono">{detection.columnCheck.rangeLabel}</div>
+                      <div className="mt-1 grid grid-cols-2 gap-x-4 font-mono">
+                        <span>
+                          N na faixa:{" "}
+                          <b>
+                            {detection.columnCheck.nInRange}/{detection.columnCheck.sampled}
+                          </b>{" "}
+                          <span className="opacity-60">
+                            (disp.{" "}
+                            {isFinite(detection.columnCheck.nSpread)
+                              ? detection.columnCheck.nSpread.toFixed(1) + "×"
+                              : "∞"}
+                            )
+                          </span>
+                        </span>
+                        <span>
+                          E na faixa:{" "}
+                          <b>
+                            {detection.columnCheck.eInRange}/{detection.columnCheck.sampled}
+                          </b>{" "}
+                          <span className="opacity-60">
+                            (disp.{" "}
+                            {isFinite(detection.columnCheck.eSpread)
+                              ? detection.columnCheck.eSpread.toFixed(1) + "×"
+                              : "∞"}
+                            )
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <p className="mt-2 text-[10px] text-white/40">
                     Limiares atuais: mín={thresholds.minSamples} · ratio=
                     {thresholds.ratio.toFixed(2)} · margem={thresholds.margin}.
                     {detection.confidence === "low" &&
+                      !detection.columnCheck?.promoted &&
                       " Para auto-aplicar este preset, afrouxe os limiares acima ou troque manualmente."}
                   </p>
+
                 </>
               )}
             </div>
