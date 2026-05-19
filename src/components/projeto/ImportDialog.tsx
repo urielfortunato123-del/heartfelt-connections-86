@@ -54,6 +54,13 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
   const [decimal, setDecimal] = useState<"." | ",">(".");
   const [thresholds, setThresholds] = useState<DetectionThresholds>(DEFAULT_THRESHOLDS);
   const [autoApply, setAutoApply] = useState(true);
+  const [detection, setDetection] = useState<DetectionResult | null>(null);
+  const [decimalInfo, setDecimalInfo] = useState<{
+    decimal: "." | ",";
+    confidence: "high" | "low";
+    comma: number;
+    dot: number;
+  } | null>(null);
 
   // Reseta o estado ao fechar.
   useEffect(() => {
