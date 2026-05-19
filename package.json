@@ -13,7 +13,8 @@
     "test:ssr": "node scripts/test-ssr.mjs",
     "test:map-placeholder": "node scripts/test-map-placeholder.mjs",
     "test:ready-signal": "node scripts/test-ready-signal-cleanup.mjs",
-    "test:route-map-unmount": "node scripts/test-route-map-unmount.mjs"
+    "test:route-map-unmount": "node scripts/test-route-map-unmount.mjs",
+    "test:detect-txt": "bun scripts/test-detect-txt-preset.ts"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
