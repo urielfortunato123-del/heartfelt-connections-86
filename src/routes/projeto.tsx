@@ -805,9 +805,42 @@ function ProjetoPage() {
             </Button>
           </div>
 
+          <Button variant="outline" size="sm" className="w-full" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-1 h-4 w-4" /> Importar DXF / TXT topográfico
+          </Button>
+
+          {overlays.length > 0 && (
+            <div className="space-y-1 rounded border border-white/10 bg-black/30 p-2 text-xs">
+              <div className="font-semibold uppercase tracking-wider text-white/60">Overlays importados</div>
+              {overlays.map((o) => (
+                <div key={o.id} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-white/80" title={o.source}>{o.source}</span>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant={draggingOverlayId === o.id ? "default" : "outline"}
+                      onClick={() => setDraggingOverlayId((cur) => (cur === o.id ? null : o.id))}
+                      title="Arrastar para posicionar no mapa"
+                    >
+                      {draggingOverlayId === o.id ? "Soltar" : "Posicionar"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setOverlays((prev) => prev.filter((x) => x.id !== o.id))}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <Button variant="destructive" size="sm" className="w-full" onClick={resetAll}>
             <Trash2 className="mr-1 h-4 w-4" /> Limpar projeto
           </Button>
+
 
           <details className="rounded border border-white/10 bg-black/30 p-3 text-xs">
             <summary className="cursor-pointer font-semibold uppercase tracking-wider text-white/60">
