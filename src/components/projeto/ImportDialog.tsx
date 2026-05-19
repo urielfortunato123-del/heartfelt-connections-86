@@ -58,6 +58,9 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     }
   }, [open]);
 
+  // Amostra bruta das primeiras linhas do TXT (texto cru, para preview de colunas).
+  const [rawSample, setRawSample] = useState<string[]>([]);
+
   const isDxf = file?.name.toLowerCase().endsWith(".dxf");
   const isTxt =
     file && (file.name.toLowerCase().endsWith(".txt") || file.name.toLowerCase().endsWith(".csv"));
@@ -70,6 +73,53 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     }),
     [presetName, skipHeader, decimal],
   );
+
+  // Lê as primeiras linhas crus do TXT para alimentar o preview de mapeamento.
+  useEffect(() => {
+    if (!file || !isTxt) {
+      setRawSample([]);
+      return;
+    }
+    let cancelled = false;
+    file.text().then((txt) => {
+      if (cancelled) return;
+      const lines = txt
+        .split(/\r?\n/)
+        .slice(skipHeader)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .slice(0, 5);
+      setRawSample(lines);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [file, isTxt, skipHeader]);
+
+  // Mapeia cada linha de amostra nas colunas declaradas pelo preset.
+  const previewRows = useMemo(() => {
+    if (rawSample.length === 0) return [];
+    const first = rawSample[0];
+    const sep =
+      first.includes("\t") ? /\t/
+        : first.includes(";") ? /;/
+        : first.includes(",") ? /,/
+        : /\s+/;
+    return rawSample.map((line) => {
+      const parts = line.split(sep).map((s) => s.trim()).filter(Boolean);
+      const mapped: Record<string, string> = {};
+      txtFormat.order.forEach((key, i) => {
+        if (key === "skip") return;
+        mapped[key] = parts[i] ?? "";
+      });
+      // Junta tudo que sobrou em "D" caso o preset tenha menos colunas que a linha
+      if (parts.length > txtFormat.order.length && txtFormat.order.includes("D")) {
+        const extras = parts.slice(txtFormat.order.length).join(" ");
+        mapped["D"] = `${mapped["D"] ?? ""}${mapped["D"] ? " " : ""}${extras}`.trim();
+      }
+      return mapped;
+    });
+  }, [rawSample, txtFormat]);
 
   // Detecta SRS automaticamente quando há dataset carregado.
   useEffect(() => {
