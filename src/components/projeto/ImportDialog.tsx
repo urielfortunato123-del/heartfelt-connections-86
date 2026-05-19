@@ -388,7 +388,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-xl flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:w-full">
         <DialogHeader className="border-b border-white/10 px-6 py-4">
           <DialogTitle>Importar desenho ou pontos topográficos</DialogTitle>
         </DialogHeader>
