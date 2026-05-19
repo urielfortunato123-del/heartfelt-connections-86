@@ -774,8 +774,8 @@ function ProjetoPage() {
 
         {/* Mapa + tabela */}
         <section className="space-y-4">
-          {mounted ? (
-            <Suspense fallback={<MapPlaceholder label="Carregando mapa…" />}>
+          <div className="relative">
+            {RouteMap && (
               <RouteMap
                 start={start}
                 end={end}
@@ -784,6 +784,7 @@ function ProjetoPage() {
                 manualPoints={manuals}
                 mode={mode}
                 onClick={handleMapClick}
+                onReady={() => setMapReady(true)}
                 onUpdatePoint={(id, patch) =>
                   commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                 }
@@ -817,10 +818,22 @@ function ProjetoPage() {
                 }}
                 onMovePointEnd={endLive}
               />
-            </Suspense>
-          ) : (
-            <MapPlaceholder label="Inicializando mapa…" />
-          )}
+            )}
+            {!mapReady && (
+              <div className="absolute inset-0 z-[500]">
+                <MapPlaceholder
+                  label={
+                    !mounted
+                      ? "Inicializando mapa…"
+                      : !RouteMap
+                        ? "Carregando mapa…"
+                        : "Preparando Leaflet…"
+                  }
+                />
+              </div>
+            )}
+          </div>
+
 
           {loading && <div className="text-sm text-cyan-300">Calculando rota…</div>}
 
