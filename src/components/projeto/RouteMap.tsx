@@ -285,12 +285,12 @@ export default function RouteMap({
                   ? {
                       drag: (e) => {
                         const ll = (e.target as L.Marker).getLatLng();
-                        onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                        safeOnMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
                       },
                       dragend: (e) => {
                         const ll = (e.target as L.Marker).getLatLng();
-                        onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
-                        onMovePointEnd?.(p.id);
+                        safeOnMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                        safeOnMovePointEnd(p.id);
                       },
                     }
                   : undefined
