@@ -64,6 +64,8 @@ type Props = {
   draggingOverlayId?: string | null;
   /** Recebe arrasto em graus (relativo). */
   onOverlayDrag?: (id: string, deltaLat: number, deltaLng: number) => void;
+  /** Sub-chave para persistir center/zoom por projeto/contexto. */
+  viewKey?: string;
 };
 
 function ReadySignal({ onReady }: { onReady?: () => void }) {
@@ -179,12 +181,15 @@ export default function RouteMap({
   overlays,
   draggingOverlayId,
   onOverlayDrag,
+  viewKey,
 }: Props) {
 
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const VIEW_KEY = "pista.mapView.v1";
+  const VIEW_KEY_BASE = "pista.mapView.v1";
+  const storageKey = `${VIEW_KEY_BASE}:${viewKey ?? "default"}`;
+  const storageKeyRef = useRef(storageKey);
   const polylineSignatureRef = useRef<string>("");
   const userInteractedRef = useRef<boolean>(false);
   const mountedRef = useRef(true);
@@ -226,7 +231,7 @@ export default function RouteMap({
   const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = window.localStorage.getItem(VIEW_KEY);
+        const raw = window.localStorage.getItem(storageKeyRef.current);
         if (raw) {
           const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
           if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
@@ -260,7 +265,7 @@ export default function RouteMap({
       const c = map.getCenter();
       const z = map.getZoom();
       try {
-        window.localStorage.setItem(VIEW_KEY, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z }));
+        window.localStorage.setItem(storageKeyRef.current, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: z }));
       } catch { /* ignore */ }
     };
     const markInteracted = () => { userInteractedRef.current = true; };
@@ -275,6 +280,37 @@ export default function RouteMap({
       map.off("zoomstart", markInteracted);
     };
   }, []);
+
+  // Quando a chave de contexto muda (projeto/filtros diferentes), troca a sub-chave
+  // de persistência e reaplica a view salva para esse contexto (ou refaz fitBounds).
+  useEffect(() => {
+    if (storageKeyRef.current === storageKey) return;
+    storageKeyRef.current = storageKey;
+    const map = mapRef.current;
+    if (!map) return;
+    let applied = false;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) {
+        const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
+        if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
+          map.setView([v.lat, v.lng], v.zoom);
+          userInteractedRef.current = true;
+          applied = true;
+        }
+      }
+    } catch { /* ignore */ }
+    if (!applied) {
+      userInteractedRef.current = false;
+      polylineSignatureRef.current = "";
+      if (polyline.length > 1) {
+        const bounds = L.latLngBounds(polyline.map(([a, b]) => L.latLng(a, b)));
+        map.fitBounds(bounds, { padding: [30, 30] });
+      } else if (start) {
+        map.setView([start.lat, start.lng], 11);
+      }
+    }
+  }, [storageKey, polyline, start]);
 
   // Cleanup final: remove a instância do Leaflet ao desmontar para liberar
   // listeners de tiles/eventos e evitar callbacks tardios em estado já desmontado.
@@ -321,7 +357,7 @@ export default function RouteMap({
   const resetView = useCallback(() => {
     const map = mapRef.current;
     try {
-      window.localStorage.removeItem(VIEW_KEY);
+      window.localStorage.removeItem(storageKeyRef.current);
     } catch {
       /* ignore */
     }
