@@ -411,17 +411,37 @@ export default function RouteMap({
 
   // Cleanup final: remove a instância do Leaflet ao desmontar para liberar
   // listeners de tiles/eventos e evitar callbacks tardios em estado já desmontado.
+  // Guardamos um flag de teardown para detectar (em dev) chamadas duplicadas — o
+  // StrictMode dispara o efeito 2x, e queremos garantir que map.off()/map.remove()
+  // rodem exatamente uma vez por instância de mapa.
+  const teardownDoneRef = useRef(false);
   useEffect(() => {
+    teardownDoneRef.current = false;
     return () => {
+      const isDev = typeof import.meta !== "undefined" && (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV;
       const map = mapRef.current;
-      if (!map) return;
+      if (teardownDoneRef.current) {
+        if (isDev) console.warn("[RouteMap] cleanup chamado mais de uma vez — ignorando.");
+        return;
+      }
+      if (!map) {
+        if (isDev) console.debug("[RouteMap] cleanup: mapRef já estava nulo, nada a fazer.");
+        teardownDoneRef.current = true;
+        return;
+      }
       try {
         map.off();
         map.remove();
-      } catch {
-        /* ignore */
+        if (isDev) console.debug("[RouteMap] cleanup OK: map.off() + map.remove() executados.");
+      } catch (err) {
+        if (isDev) console.error("[RouteMap] cleanup falhou:", err);
+      } finally {
+        mapRef.current = null;
+        teardownDoneRef.current = true;
+        if (isDev && mapRef.current !== null) {
+          console.error("[RouteMap] mapRef não foi limpo após cleanup!");
+        }
       }
-      mapRef.current = null;
     };
   }, []);
 
