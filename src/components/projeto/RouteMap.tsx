@@ -49,6 +49,10 @@ type Props = {
   onMovePoint?: (id: string, latlng: LatLng) => void;
   onMovePointEnd?: (id: string) => void;
   onReady?: () => void;
+  /** Geometrias da rodovia destacada (cada way = uma polyline [lat,lng]). */
+  highlightedRoad?: [number, number][][];
+  /** bbox a enquadrar imperativamente (incrementa a cada nova busca). */
+  fitBbox?: { south: number; west: number; north: number; east: number; key: number } | null;
 };
 
 function ReadySignal({ onReady }: { onReady?: () => void }) {
