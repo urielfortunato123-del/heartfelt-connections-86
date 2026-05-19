@@ -51,6 +51,8 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
   const [presetName, setPresetName] = useState<keyof typeof TXT_PRESETS>("PENZD (P,E,N,Z,D)");
   const [skipHeader, setSkipHeader] = useState(0);
   const [decimal, setDecimal] = useState<"." | ",">(".");
+  const [thresholds, setThresholds] = useState<DetectionThresholds>(DEFAULT_THRESHOLDS);
+  const [autoApply, setAutoApply] = useState(true);
 
   // Reseta o estado ao fechar.
   useEffect(() => {
