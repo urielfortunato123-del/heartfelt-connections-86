@@ -387,7 +387,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                 Limiares da detecção automática{" "}
                 <span className="ml-1 text-white/40">
                   (min={thresholds.minSamples} · ratio={thresholds.ratio.toFixed(2)} · margem=
-                  {thresholds.margin}{autoApply ? "" : " · auto-aplicar OFF"})
+                  {thresholds.margin} · auto={autoApply})
                 </span>
               </summary>
               <div className="mt-3 grid grid-cols-3 gap-3">
