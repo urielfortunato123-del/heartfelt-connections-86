@@ -295,6 +295,17 @@ export type DetectionResult = {
   columnCheck?: ColumnCheck;
   /** Top amostras (ordenadas por score desc) que mais contribuíram para o preset vencedor. */
   topSamples?: SampleContribution[];
+  /** Decisão explicativa: qual "trilha" venceu, com winner/loser e limiares aplicados. */
+  decision?: {
+    track: "latlng" | "with-id" | "without-id";
+    winner: number;
+    loser: number;
+    total: number;
+    ratioActual: number;
+    marginActual: number;
+    thresholds: DetectionThresholds;
+    reason: string;
+  };
 };
 
 export type DetectionThresholds = {
