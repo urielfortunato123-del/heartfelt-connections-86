@@ -572,7 +572,7 @@ function ProjetoPage() {
     } catch (err) {
       toast.error(`Falha ao importar: ${(err as Error).message}`);
     }
-  }
+  };
 
 
   // Linhas finais para tabela/export
