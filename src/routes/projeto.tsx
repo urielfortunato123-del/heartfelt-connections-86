@@ -20,6 +20,7 @@ import {
   nearestOnRoute,
   type LL,
 } from "@/lib/projeto/geo";
+import { searchRodoviaByRef, type RodoviaResult } from "@/lib/projeto/rodovia";
 import {
   DEFAULT_BOTH_LAYOUT,
   DEFAULT_GRID_LAYOUT,
