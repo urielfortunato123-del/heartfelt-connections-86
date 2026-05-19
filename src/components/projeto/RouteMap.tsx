@@ -12,6 +12,11 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
+// Ícones do Leaflet bundlados localmente — evita 3 requisições ao unpkg em cada
+// montagem do mapa e funciona offline.
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 const { BaseLayer, Overlay } = LayersControl;
 
@@ -19,9 +24,9 @@ const { BaseLayer, Overlay } = LayersControl;
 // Fix de ícone padrão do Leaflet (caminhos quebrados via bundler)
 if (typeof window !== "undefined") {
   const defaultIcon = L.icon({
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconUrl: markerIcon as unknown as string,
+    iconRetinaUrl: markerIcon2x as unknown as string,
+    shadowUrl: markerShadow as unknown as string,
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
