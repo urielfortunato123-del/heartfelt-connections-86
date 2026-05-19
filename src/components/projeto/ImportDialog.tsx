@@ -287,6 +287,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
       setFile(null);
       setParsed(null);
       setBusy(false);
+      setProgress(null);
     }
   }, [open]);
 
