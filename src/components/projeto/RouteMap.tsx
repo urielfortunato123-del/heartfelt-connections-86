@@ -150,6 +150,9 @@ export default function RouteMap({
   onReady,
   highlightedRoad,
   fitBbox,
+  overlays,
+  draggingOverlayId,
+  onOverlayDrag,
 }: Props) {
 
   const mapRef = useRef<L.Map | null>(null);
