@@ -708,7 +708,7 @@ function ProjetoPage() {
         {/* Mapa + tabela */}
         <section className="space-y-4">
           {mounted ? (
-            <Suspense fallback={<div className="h-[480px] animate-pulse rounded-lg bg-white/5" />}>
+            <Suspense fallback={<MapPlaceholder label="Carregando mapa…" />}>
               <RouteMap
                 start={start}
                 end={end}
@@ -751,9 +751,8 @@ function ProjetoPage() {
                 onMovePointEnd={endLive}
               />
             </Suspense>
-
           ) : (
-            <div className="h-[480px] rounded-lg border border-white/10 bg-white/5" />
+            <MapPlaceholder label="Inicializando mapa…" />
           )}
 
           {loading && <div className="text-sm text-cyan-300">Calculando rota…</div>}
