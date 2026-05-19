@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  DEFAULT_THRESHOLDS,
   detectDecimalSeparator,
   detectTxtPresetVerbose,
   parseDxf,
   parseTopoTxt,
   TXT_PRESETS,
+  type DetectionThresholds,
   type ImportedDataset,
   type TxtFormat,
 } from "@/lib/projeto/importers";
