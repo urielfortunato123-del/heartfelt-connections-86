@@ -64,6 +64,8 @@ type Props = {
   draggingOverlayId?: string | null;
   /** Recebe arrasto em graus (relativo). */
   onOverlayDrag?: (id: string, deltaLat: number, deltaLng: number) => void;
+  /** Sub-chave para persistir center/zoom por projeto/contexto. */
+  viewKey?: string;
 };
 
 function ReadySignal({ onReady }: { onReady?: () => void }) {
