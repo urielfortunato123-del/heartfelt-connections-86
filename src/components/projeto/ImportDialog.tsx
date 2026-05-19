@@ -88,15 +88,30 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed]);
 
+  const log = useCallback(
+    (msg: string, level: "info" | "ok" | "warn" | "error" = "info") => onStatus?.(msg, level),
+    [onStatus],
+  );
+
   const handleParse = async (f: File) => {
     setBusy(true);
     try {
-      const ds = f.name.toLowerCase().endsWith(".dxf")
-        ? await parseDxf(f)
-        : await parseTopoTxt(f, txtFormat);
+      log(`Lendo arquivo "${f.name}" (${Math.round(f.size / 1024)} KB)…`);
+      const isDxfFile = f.name.toLowerCase().endsWith(".dxf");
+      log(isDxfFile ? "Interpretando entidades DXF…" : "Interpretando pontos topográficos…");
+      const ds = isDxfFile ? await parseDxf(f) : await parseTopoTxt(f, txtFormat);
+      log(
+        `Parse OK: ${ds.polylines.length} polilinha(s), ${ds.points.length} ponto(s).`,
+        "ok",
+      );
+      if (ds.points.length === 0 && ds.polylines.length === 0) {
+        log("Nenhuma geometria encontrada — verifique formato/separador/cabeçalho.", "warn");
+      }
       setParsed(ds);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha ao ler o arquivo.");
+      const m = err instanceof Error ? err.message : "Falha ao ler o arquivo.";
+      toast.error(m);
+      log(`Falha na leitura: ${m}`, "error");
     } finally {
       setBusy(false);
     }
@@ -112,19 +127,20 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     setFile(f);
     setParsed(null);
     if (!f) return;
-    // Para TXT/CSV, detecta o preset automaticamente para evitar Norte/Leste invertidos.
     const isTxtFile = f.name.toLowerCase().endsWith(".txt") || f.name.toLowerCase().endsWith(".csv");
     if (isTxtFile) {
       try {
+        log("Detectando formato (PNEZD/PENZD/Lat-Lng)…");
         const detected = await detectTxtPreset(f, decimal, skipHeader);
         if (detected && detected !== presetName) {
           setPresetName(detected);
           toast.info(`Formato detectado: ${detected}`);
-          // O useEffect que observa presetName fará o parse com o formato certo.
+          log(`Formato detectado: ${detected}`, "ok");
           return;
         }
+        if (detected) log(`Formato confirmado: ${detected}`, "ok");
       } catch {
-        // segue o fluxo normal se a detecção falhar
+        log("Detecção automática falhou — usando formato atual.", "warn");
       }
     }
     handleParse(f);
@@ -135,6 +151,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     const polylines: [number, number][][] = [];
     const points: OverlayFeature["points"] = [];
     try {
+      log(`Convertendo coordenadas (${srs}) → WGS84…`);
       for (const pl of parsed.polylines) {
         polylines.push(pl.coords.map((v) => {
           const ll = toLatLng(srs, v.x, v.y);
@@ -145,8 +162,10 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
         const ll = toLatLng(srs, p.x, p.y);
         points.push({ lat: ll.lat, lng: ll.lng, label: p.label });
       }
+      log(`Conversão OK: ${polylines.length} polilinha(s), ${points.length} ponto(s).`, "ok");
     } catch (err) {
       toast.error("Falha ao reprojetar coordenadas. Verifique o SRC selecionado.");
+      log(`Falha na conversão: ${err instanceof Error ? err.message : String(err)}`, "error");
       console.error(err);
       return;
     }
@@ -158,8 +177,13 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
       points,
       style: { color: "#34d399", weight: 2.5, opacity: 0.9 },
     };
+    log("Desenhando no mapa…");
     onImport(overlay);
     onOpenChange(false);
+    log(
+      `${parsed.kind === "dxf" ? "Desenho" : "Pontos"} importado com sucesso.`,
+      "ok",
+    );
     toast.success(
       `${parsed.kind === "dxf" ? "Desenho" : "Pontos"} importado: ${
         polylines.length
