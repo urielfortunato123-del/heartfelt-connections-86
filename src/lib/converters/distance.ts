@@ -11,14 +11,14 @@ export type DistanceUnit = {
 };
 
 export const DISTANCE_UNITS: DistanceUnit[] = [
-  { key: "m", label: "Meters", suffix: "m", factor: 1000 },
-  { key: "mi", label: "Miles", suffix: "mi", factor: 0.621371 },
-  { key: "nmi", label: "Nautical Miles", suffix: "nmi", factor: 0.539957 },
-  { key: "yd", label: "Yards", suffix: "yd", factor: 1093.61 },
-  { key: "ft", label: "Feet", suffix: "ft", factor: 3280.84 },
+  { key: "m", label: "Metros", suffix: "m", factor: 1000 },
+  { key: "mi", label: "Milhas", suffix: "mi", factor: 0.621371 },
+  { key: "nmi", label: "Milhas Náuticas", suffix: "nmi", factor: 0.539957 },
+  { key: "yd", label: "Jardas", suffix: "yd", factor: 1093.61 },
+  { key: "ft", label: "Pés", suffix: "ft", factor: 3280.84 },
   { key: "legua", label: "Léguas (BR)", suffix: "lég", factor: 1 / 6.6 },
-  { key: "au", label: "Astronomical U.", suffix: "AU", factor: 6.6846e-9 },
-  { key: "ly", label: "Light-Years", suffix: "ly", factor: 1.057e-16 },
+  { key: "au", label: "Unidade Astronômica", suffix: "UA", factor: 6.6846e-9 },
+  { key: "ly", label: "Anos-luz", suffix: "al", factor: 1.057e-16 },
 ];
 
 // Locale fixo para evitar mismatch de hidratação (SSR usa Node default, browser usa pt-BR).
