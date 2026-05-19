@@ -547,7 +547,7 @@ function Index() {
             onClick={shareLink}
             className="hidden rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-[10px] tracking-[0.25em] text-white/70 transition-colors hover:border-cyan-400/50 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:inline-flex"
           >
-            SHARE
+            COMPARTILHAR
           </button>
           <span className="hidden font-mono text-[10px] tracking-[0.3em] text-cyan-300 md:inline">
             // ONLINE
@@ -566,7 +566,7 @@ function Index() {
               className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-[10px] tracking-[0.3em] text-cyan-300 backdrop-blur"
             >
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-400" />
-              REALTIME · ZERO LATENCY
+              TEMPO REAL · ZERO LATÊNCIA
             </motion.div>
 
             <motion.h1
@@ -575,7 +575,7 @@ function Index() {
               transition={{ duration: 1, delay: 0.1 }}
               className="text-5xl font-bold leading-[1.05] tracking-tight md:text-7xl"
             >
-              Distance,
+              Distância,
               <br />
               <span
                 className="bg-clip-text text-transparent"
@@ -584,7 +584,7 @@ function Index() {
                     "linear-gradient(110deg, #22d3ee 0%, #818cf8 45%, #a855f7 100%)",
                 }}
               >
-                reimagined.
+                reimaginada.
               </span>
             </motion.h1>
 
@@ -594,9 +594,7 @@ function Index() {
               transition={{ delay: 0.4, duration: 1 }}
               className="mt-6 max-w-md text-base text-white/60"
             >
-              A cinematic converter built for engineers, drivers and travelers
-              of the next decade. Edit any field — every unit updates in real
-              time.
+              Um conversor cinematográfico feito para engenheiros, motoristas e viajantes da próxima década. Edite qualquer campo — cada unidade atualiza em tempo real.
             </motion.p>
 
             {/* Converter card */}
@@ -617,7 +615,7 @@ function Index() {
                 htmlFor="km-input"
                 className="mb-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40"
               >
-                <span>INPUT · KILOMETERS</span>
+                <span>ENTRADA · QUILÔMETROS</span>
                 <span className="flex items-center gap-1.5 text-cyan-300" aria-hidden="true">
                   <Gauge className="h-3 w-3" /> LIVE
                 </span>
@@ -819,7 +817,7 @@ function Index() {
                       type="button"
                       onClick={() => { setKm(preset); commitUrl(preset); }}
                       aria-pressed={active}
-                      aria-label={`Set distance to ${preset} kilometers (press ${i + 1})`}
+                      aria-label={`Definir distância para ${preset} quilômetros (tecla ${i + 1})`}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       className={`rounded-full border px-4 py-1.5 font-mono text-xs tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 ${
@@ -840,7 +838,7 @@ function Index() {
               </div>
 
               <p className="mt-4 font-mono text-[10px] tracking-[0.3em] text-white/30">
-                ↔ EDIT ANY FIELD · BIDIRECTIONAL
+                ↔ EDITE QUALQUER CAMPO · BIDIRECIONAL
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -872,7 +870,7 @@ function Index() {
                           id={`unit-${u.key}`}
                           type="number"
                           inputMode="decimal"
-                          aria-label={`Distance in ${u.label}`}
+                          aria-label={`Distância em ${u.label}`}
                           value={toEditableString(value)}
                           onChange={(e) => {
                             const v = parseFloat(e.target.value);
@@ -884,7 +882,7 @@ function Index() {
                         <button
                           type="button"
                           onClick={() => copyValue(value, u.label, u.suffix)}
-                          aria-label={`Copy ${u.label} value`}
+                          aria-label={`Copiar valor em ${u.label}`}
                           className="rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/5 hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                         >
                           <Copy className="h-3.5 w-3.5" />
@@ -902,7 +900,7 @@ function Index() {
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/30 px-4 py-3">
                 <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.25em] text-white/40">
                   <Navigation className="h-3 w-3 text-fuchsia-400" />
-                  TRAVEL TIME · @ 100 KM/H
+                  TEMPO DE VIAGEM · @ 100 KM/H
                 </div>
                 <div className="font-mono text-sm text-white">
                   <AnimatedNumber value={travelHours} className="text-cyan-300" />
@@ -914,7 +912,7 @@ function Index() {
               {/* Keyboard hint */}
               <div className="mt-4 hidden items-center gap-2 font-mono text-[10px] tracking-[0.25em] text-white/30 md:flex">
                 <Keyboard className="h-3 w-3" />
-                <span>↑/↓ adjust · shift = ×10 · 1–5 = presets</span>
+                <span>↑/↓ ajustar · shift = ×10 · 1–5 = predefinições</span>
               </div>
             </motion.section>
           </div>
@@ -934,7 +932,7 @@ function Index() {
               }}
             >
               <div className="mb-4 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
-                <span>HUD · VELOCITY PROJECTION</span>
+                <span>HUD · PROJEÇÃO DE VELOCIDADE</span>
                 <motion.span
                   animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 2.5, repeat: Infinity }}
@@ -958,12 +956,12 @@ function Index() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-white/30">RANGE</div>
+                  <div className="text-white/30">FAIXA</div>
                   <div className="mt-1 text-white">0–300</div>
                 </div>
                 <div>
-                  <div className="text-white/30">MODE</div>
-                  <div className="mt-1 text-cyan-300">CRUISE</div>
+                  <div className="text-white/30">MODO</div>
+                  <div className="mt-1 text-cyan-300">CRUZEIRO</div>
                 </div>
               </div>
             </motion.div>
@@ -978,7 +976,7 @@ function Index() {
             >
               <div className="mb-3 flex items-center justify-between font-mono text-[10px] tracking-[0.3em] text-white/40">
                 <span className="flex items-center gap-1.5">
-                  <History className="h-3 w-3 text-cyan-300" /> RECENT
+                  <History className="h-3 w-3 text-cyan-300" /> RECENTES
                 </span>
                 {history.length > 0 && (
                   <button
@@ -993,7 +991,7 @@ function Index() {
               </div>
               {history.length === 0 ? (
                 <p className="font-mono text-[11px] text-white/30">
-                  No conversions yet — start typing.
+                  Sem conversões ainda — comece a digitar.
                 </p>
               ) : (
                 <ul className="space-y-1.5">
@@ -1017,7 +1015,7 @@ function Index() {
                             <span className="text-xs text-white/40">km</span>
                           </span>
                           <span className="font-mono text-[10px] tracking-[0.2em] text-white/30 group-hover:text-cyan-300">
-                            RESTORE →
+                            RESTAURAR →
                           </span>
                         </button>
                       </motion.li>
