@@ -393,8 +393,9 @@ export async function detectTxtPreset(
   file: File,
   decimal: "." | "," = ".",
   skipHeaderLines = 0,
+  thresholds: DetectionThresholds = DEFAULT_THRESHOLDS,
 ): Promise<keyof typeof TXT_PRESETS | null> {
-  const r = await detectTxtPresetVerbose(file, decimal, skipHeaderLines);
+  const r = await detectTxtPresetVerbose(file, decimal, skipHeaderLines, thresholds);
   if (!r) return null;
   return r.confidence === "high" ? r.preset : null;
 }
