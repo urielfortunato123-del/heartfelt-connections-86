@@ -249,7 +249,7 @@ function ProjetoPage() {
   const [overlays, setOverlays] = useState<OverlayFeature[]>([]);
   const [draggingOverlayId, setDraggingOverlayId] = useState<string | null>(null);
 
-  const handleImport = useCallback((ov: OverlayFeature) => {
+  const handleImportOverlay = useCallback((ov: OverlayFeature) => {
     setOverlays((prev) => [...prev, ov]);
     // se o overlay traz pelo menos um ponto/polilinha, fit no bbox
     const all: [number, number][] = [
