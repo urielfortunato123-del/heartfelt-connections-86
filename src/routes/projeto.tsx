@@ -45,6 +45,7 @@ import {
 import type RouteMapType from "@/components/projeto/RouteMap";
 type RouteMapComponent = ComponentType<React.ComponentProps<typeof RouteMapType>>;
 import { PdfPreviewDialog } from "@/components/projeto/PdfPreviewDialog";
+import { ImportDialog, type OverlayFeature } from "@/components/projeto/ImportDialog";
 
 function MapPlaceholder({ label }: { label: string }) {
   return (
@@ -242,6 +243,42 @@ function ProjetoPage() {
     setEnd(b);
     toast.success("Início e fim sugeridos sobre a rodovia destacada.");
   }, [rodovia, meta]);
+
+  // Importação de arquivos (DXF, TXT topográfico)
+  const [importOpen, setImportOpen] = useState(false);
+  const [overlays, setOverlays] = useState<OverlayFeature[]>([]);
+  const [draggingOverlayId, setDraggingOverlayId] = useState<string | null>(null);
+
+  const handleImportOverlay = useCallback((ov: OverlayFeature) => {
+    setOverlays((prev) => [...prev, ov]);
+    // se o overlay traz pelo menos um ponto/polilinha, fit no bbox
+    const all: [number, number][] = [
+      ...ov.polylines.flat(),
+      ...ov.points.map((p) => [p.lat, p.lng] as [number, number]),
+    ];
+    if (all.length > 0) {
+      const lats = all.map((p) => p[0]);
+      const lngs = all.map((p) => p[1]);
+      setFitBbox({
+        south: Math.min(...lats),
+        north: Math.max(...lats),
+        west: Math.min(...lngs),
+        east: Math.max(...lngs),
+        key: Date.now(),
+      });
+    }
+  }, []);
+
+  const handleOverlayDrag = useCallback((id: string, dLat: number, dLng: number) => {
+    setOverlays((prev) =>
+      prev.map((o) =>
+        o.id === id
+          ? { ...o, offset: { dx: (o.offset?.dx ?? 0) + dLng, dy: (o.offset?.dy ?? 0) + dLat } }
+          : o,
+      ),
+    );
+  }, []);
+
 
 
   const [start, setStart] = useState<LL | null>(null);
@@ -768,9 +805,42 @@ function ProjetoPage() {
             </Button>
           </div>
 
+          <Button variant="outline" size="sm" className="w-full" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-1 h-4 w-4" /> Importar DXF / TXT topográfico
+          </Button>
+
+          {overlays.length > 0 && (
+            <div className="space-y-1 rounded border border-white/10 bg-black/30 p-2 text-xs">
+              <div className="font-semibold uppercase tracking-wider text-white/60">Overlays importados</div>
+              {overlays.map((o) => (
+                <div key={o.id} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-white/80" title={o.source}>{o.source}</span>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant={draggingOverlayId === o.id ? "default" : "outline"}
+                      onClick={() => setDraggingOverlayId((cur) => (cur === o.id ? null : o.id))}
+                      title="Arrastar para posicionar no mapa"
+                    >
+                      {draggingOverlayId === o.id ? "Soltar" : "Posicionar"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setOverlays((prev) => prev.filter((x) => x.id !== o.id))}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <Button variant="destructive" size="sm" className="w-full" onClick={resetAll}>
             <Trash2 className="mr-1 h-4 w-4" /> Limpar projeto
           </Button>
+
 
           <details className="rounded border border-white/10 bg-black/30 p-3 text-xs">
             <summary className="cursor-pointer font-semibold uppercase tracking-wider text-white/60">
@@ -913,6 +983,9 @@ function ProjetoPage() {
                 onReady={() => setMapReady(true)}
                 highlightedRoad={rodovia?.ways}
                 fitBbox={fitBbox}
+                overlays={overlays}
+                draggingOverlayId={draggingOverlayId}
+                onOverlayDrag={handleOverlayDrag}
                 onUpdatePoint={(id, patch) =>
                   commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                 }
@@ -1128,6 +1201,7 @@ function ProjetoPage() {
         filename={`${(meta.name || "projeto").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-placas-grid.pdf`}
         title="Pré-visualização — PDF placas (grid)"
       />
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImport={handleImportOverlay} />
     </div>
   );
 }

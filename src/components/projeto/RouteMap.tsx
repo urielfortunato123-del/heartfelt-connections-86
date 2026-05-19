@@ -53,6 +53,17 @@ type Props = {
   highlightedRoad?: [number, number][][];
   /** bbox a enquadrar imperativamente (incrementa a cada nova busca). */
   fitBbox?: { south: number; west: number; north: number; east: number; key: number } | null;
+  /** Overlays importados (DXF/TXT) sobre o mapa. */
+  overlays?: Array<{
+    id: string;
+    polylines: [number, number][][];
+    points: Array<{ lat: number; lng: number; label?: string }>;
+    offset?: { dx: number; dy: number };
+  }>;
+  /** Id do overlay que o usuário está arrastando (modo posicionar). */
+  draggingOverlayId?: string | null;
+  /** Recebe arrasto em graus (relativo). */
+  onOverlayDrag?: (id: string, deltaLat: number, deltaLng: number) => void;
 };
 
 function ReadySignal({ onReady }: { onReady?: () => void }) {
@@ -88,6 +99,32 @@ function ReadySignal({ onReady }: { onReady?: () => void }) {
   return null;
 }
 
+
+function OverlayDragHandler({
+  id,
+  onDrag,
+}: {
+  id: string;
+  onDrag: (id: string, deltaLat: number, deltaLng: number) => void;
+}) {
+  const lastRef = useRef<{ lat: number; lng: number } | null>(null);
+  useMapEvents({
+    mousedown(e) {
+      lastRef.current = { lat: e.latlng.lat, lng: e.latlng.lng };
+    },
+    mousemove(e) {
+      if (!lastRef.current) return;
+      const dLat = e.latlng.lat - lastRef.current.lat;
+      const dLng = e.latlng.lng - lastRef.current.lng;
+      lastRef.current = { lat: e.latlng.lat, lng: e.latlng.lng };
+      onDrag(id, dLat, dLng);
+    },
+    mouseup() {
+      lastRef.current = null;
+    },
+  });
+  return null;
+}
 
 function ClickCatcher({ onClick }: { onClick: (l: LatLng) => void }) {
   const mountedRef = useRef(true);
@@ -139,6 +176,9 @@ export default function RouteMap({
   onReady,
   highlightedRoad,
   fitBbox,
+  overlays,
+  draggingOverlayId,
+  onOverlayDrag,
 }: Props) {
 
   const mapRef = useRef<L.Map | null>(null);
@@ -278,6 +318,20 @@ export default function RouteMap({
     }
   }, []);
 
+  // Em modo "arrastar overlay", desliga o pan do mapa para que o mouse mova só o overlay.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (draggingOverlayId) {
+      map.dragging.disable();
+      map.getContainer().style.cursor = "grabbing";
+    } else {
+      map.dragging.enable();
+      map.getContainer().style.cursor = "";
+    }
+  }, [draggingOverlayId]);
+
+
   return (
     <div
       ref={containerRef}
@@ -375,6 +429,48 @@ export default function RouteMap({
             pathOptions={{ color: "#facc15", weight: 6, opacity: 0.55 }}
           />
         ))}
+
+        {/* Overlays importados (DXF/TXT) */}
+        {overlays?.map((ov) => {
+          const dx = ov.offset?.dx ?? 0;
+          const dy = ov.offset?.dy ?? 0;
+          const shift = (p: [number, number]): [number, number] => [p[0] + dy, p[1] + dx];
+          return (
+            <div key={ov.id} style={{ display: "contents" }}>
+              {ov.polylines.map((pl, i) => (
+                <Polyline
+                  key={`${ov.id}-pl-${i}`}
+                  positions={pl.map(shift)}
+                  pathOptions={{
+                    color: draggingOverlayId === ov.id ? "#f97316" : "#34d399",
+                    weight: 2.5,
+                    opacity: 0.9,
+                  }}
+                />
+              ))}
+              {ov.points.map((p, i) => (
+                <CircleMarker
+                  key={`${ov.id}-pt-${i}`}
+                  center={[p.lat + dy, p.lng + dx]}
+                  radius={3}
+                  pathOptions={{
+                    color: "#34d399",
+                    fillColor: "#34d399",
+                    fillOpacity: 0.95,
+                  }}
+                >
+                  {p.label && <Tooltip direction="top">{p.label}</Tooltip>}
+                </CircleMarker>
+              ))}
+            </div>
+          );
+        })}
+
+        {/* Captura arrasto no mapa quando um overlay está em modo posicionar. */}
+        {draggingOverlayId && onOverlayDrag && (
+          <OverlayDragHandler id={draggingOverlayId} onDrag={onOverlayDrag} />
+        )}
+
 
 
 
