@@ -28,6 +28,8 @@ export type OverlayFeature = {
   points: Array<{ lat: number; lng: number; label?: string }>;
   /** Offset aplicado em metros (usado no modo arrastar). */
   offset?: { dx: number; dy: number };
+  /** Estilo visual ajustável (cor/espessura/opacidade). */
+  style?: { color: string; weight: number; opacity: number };
 };
 
 type Props = {
