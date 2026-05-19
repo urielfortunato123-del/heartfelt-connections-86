@@ -349,8 +349,8 @@ export async function detectTxtPresetVerbose(
   const stats = { sampled, withId, withoutId, aGtB_id, bGtA_id, aGtB_noid, bGtA_noid, latLngHits };
   if (sampled === 0) return null;
 
-  // Lat/Lng só é alta-confiança se quase todas as amostras cabem nas faixas E há ≥3 amostras.
-  if (sampled >= MIN_SAMPLES && latLngHits / sampled >= 0.9) {
+  // Lat/Lng só é alta-confiança se quase todas as amostras cabem nas faixas E há amostras suficientes.
+  if (sampled >= thresholds.minSamples && latLngHits / sampled >= 0.9) {
     return { preset: "Lat,Lng,Z (GNSS)", confidence: "high", stats };
   }
   if (latLngHits / sampled >= 0.8) {
@@ -364,7 +364,7 @@ export async function detectTxtPresetVerbose(
     if (winner === 0) return null;
     return {
       preset: aWin ? "PNEZD (P,N,E,Z,D)" : "PENZD (P,E,N,Z,D)",
-      confidence: classify(winner, loser),
+      confidence: classify(winner, loser, thresholds),
       stats,
     };
   }
@@ -376,7 +376,7 @@ export async function detectTxtPresetVerbose(
     if (winner === 0) return null;
     return {
       preset: aWin ? "NEZ (N,E,Z)" : "ENZ (E,N,Z)",
-      confidence: classify(winner, loser),
+      confidence: classify(winner, loser, thresholds),
       stats,
     };
   }
