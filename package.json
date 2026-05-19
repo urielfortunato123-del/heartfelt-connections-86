@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test:ssr": "node scripts/test-ssr.mjs"
+    "test:ssr": "node scripts/test-ssr.mjs",
+    "test:map-placeholder": "node scripts/test-map-placeholder.mjs"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
