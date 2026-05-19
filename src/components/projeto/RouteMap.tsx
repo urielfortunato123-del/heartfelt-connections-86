@@ -230,7 +230,22 @@ export default function RouteMap({
   const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = window.localStorage.getItem(storageKeyRef.current);
+        const currentKey = storageKeyRef.current;
+        // Migração: chave antiga global → nova chave por projeto/filtros.
+        // Só copia se a nova chave ainda não existir, para não sobrescrever
+        // uma view já salva pelo contexto atual. Remove a antiga após copiar.
+        const LEGACY_KEY = "pista.mapView.v1";
+        if (currentKey !== LEGACY_KEY) {
+          const legacy = window.localStorage.getItem(LEGACY_KEY);
+          const existing = window.localStorage.getItem(currentKey);
+          if (legacy && !existing) {
+            window.localStorage.setItem(currentKey, legacy);
+          }
+          if (legacy) {
+            window.localStorage.removeItem(LEGACY_KEY);
+          }
+        }
+        const raw = window.localStorage.getItem(currentKey);
         if (raw) {
           const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
           if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
