@@ -647,7 +647,7 @@ export default function RouteMap({
       ref={containerRef}
       className={
         isFullscreen
-          ? "relative h-screen w-screen bg-slate-950"
+          ? "fixed inset-0 z-40 h-screen w-screen bg-slate-950"
           : "relative h-[480px] w-full overflow-hidden rounded-lg border border-white/10"
       }
     >
