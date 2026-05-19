@@ -601,7 +601,7 @@ function Index() {
 
             {/* Converter card */}
             <motion.section
-              aria-label="Distance converter"
+              aria-label="Conversor de distância"
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.9 }}
@@ -629,7 +629,7 @@ function Index() {
                   type="number"
                   inputMode="decimal"
                   min={0}
-                  aria-label="Distance in kilometers"
+                  aria-label="Distância em quilômetros"
                   value={Number.isFinite(km) ? Number(km.toFixed(3)) : ""}
                   onChange={(e) => setKm(parseFloat(e.target.value))}
                   onBlur={() => commitUrl(km)}
@@ -808,7 +808,7 @@ function Index() {
 
               <div
                 role="group"
-                aria-label="Quick distance presets"
+                aria-label="Predefinições rápidas de distância"
                 className="mt-6 flex flex-wrap gap-2"
               >
                 {PRESETS.map((preset, i) => {
@@ -970,7 +970,7 @@ function Index() {
 
             {/* History panel */}
             <motion.section
-              aria-label="Recent conversions"
+              aria-label="Conversões recentes"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8 }}
@@ -984,7 +984,7 @@ function Index() {
                   <button
                     type="button"
                     onClick={clearHistory}
-                    aria-label="Clear history"
+                    aria-label="Limpar histórico"
                     className="rounded p-1 text-white/40 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                   >
                     <Trash2 className="h-3 w-3" />
