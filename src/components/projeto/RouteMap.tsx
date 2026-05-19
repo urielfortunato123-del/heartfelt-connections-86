@@ -584,31 +584,29 @@ export default function RouteMap({
     };
   }, []);
 
-  // Fullscreen: sincroniza estado com a Fullscreen API e ajusta o tamanho do mapa.
+  // Fullscreen "fake" via CSS (fixed inset-0). Não usamos a Fullscreen API nativa porque
+  // ela esconde qualquer portal (Radix Dialog, toasts) renderizado fora do elemento — o
+  // ImportDialog ficaria invisível durante a importação em tela cheia.
   useEffect(() => {
-    const onFsChange = () => {
-      const active = document.fullscreenElement === containerRef.current;
-      setIsFullscreen(active);
-      // Após transição, recalcula tiles para preencher a nova área.
-      setTimeout(() => mapRef.current?.invalidateSize(), 200);
+    // Recalcula tiles do Leaflet sempre que o modo mudar.
+    const t = setTimeout(() => mapRef.current?.invalidateSize(), 200);
+    return () => clearTimeout(t);
+  }, [isFullscreen]);
+
+  // ESC sai do modo tela cheia.
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullscreen(false);
     };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isFullscreen]);
+
+  const toggleFullscreen = useCallback(() => {
+    setIsFullscreen((v) => !v);
   }, []);
 
-  const toggleFullscreen = useCallback(async () => {
-    const el = containerRef.current;
-    if (!el) return;
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else {
-        await el.requestFullscreen();
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   const resetView = useCallback(() => {
     const map = mapRef.current;
