@@ -438,26 +438,51 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                   />
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <label className="flex items-center gap-2 text-white/80">
-                  <input
-                    type="checkbox"
-                    checked={autoApply}
-                    onChange={(e) => setAutoApply(e.target.checked)}
-                  />
-                  Auto-aplicar preset quando confiança = alta
-                </label>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-[11px]"
-                  onClick={() => {
-                    setThresholds(DEFAULT_THRESHOLDS);
-                    setAutoApply(true);
-                  }}
-                >
-                  Restaurar padrão
-                </Button>
+              <div className="mt-3 space-y-2">
+                <Label className="text-[11px]">Política de auto-aplicação</Label>
+                <div className="flex flex-wrap gap-3 text-white/80">
+                  {(
+                    [
+                      ["high", "Só em ALTA confiança", "padrão — seguro"],
+                      ["any", "Em ALTA ou BAIXA", "permissivo — sugere sempre"],
+                      ["off", "Nunca (apenas sugerir)", "manual — você decide"],
+                    ] as const
+                  ).map(([value, label, hint]) => (
+                    <label
+                      key={value}
+                      className={`flex cursor-pointer items-start gap-2 rounded border px-2 py-1.5 text-[11px] ${
+                        autoApply === value
+                          ? "border-cyan-400/50 bg-cyan-400/10 text-cyan-100"
+                          : "border-white/10 bg-white/[0.03] hover:border-white/30"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="autoApply"
+                        className="mt-0.5"
+                        checked={autoApply === value}
+                        onChange={() => setAutoApply(value)}
+                      />
+                      <span>
+                        <span className="block font-medium">{label}</span>
+                        <span className="block text-[10px] text-white/50">{hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-[11px]"
+                    onClick={() => {
+                      setThresholds(DEFAULT_THRESHOLDS);
+                      setAutoApply("high");
+                    }}
+                  >
+                    Restaurar padrão
+                  </Button>
+                </div>
               </div>
               <p className="mt-2 text-[10px] text-white/40">
                 Mais rígido (ratio↑, margem↑) = só auto-aplica quando tem certeza. Mais permissivo
