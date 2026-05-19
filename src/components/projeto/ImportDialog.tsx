@@ -14,7 +14,7 @@ import {
   type ImportedDataset,
   type TxtFormat,
 } from "@/lib/projeto/importers";
-import { SRS_OPTIONS, looksLikeLatLng, looksLikeUTM, toLatLng } from "@/lib/projeto/srs";
+import { LOCAL_SRS, SRS_OPTIONS, looksLikeLatLng, looksLikeUTM, toLatLng, validateSrsBbox } from "@/lib/projeto/srs";
 import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
