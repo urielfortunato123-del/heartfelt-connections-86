@@ -53,7 +53,13 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
   const [skipHeader, setSkipHeader] = useState(0);
   const [decimal, setDecimal] = useState<"." | ",">(".");
   const [thresholds, setThresholds] = useState<DetectionThresholds>(DEFAULT_THRESHOLDS);
-  const [autoApply, setAutoApply] = useState(true);
+  /**
+   * Política de auto-aplicação do preset detectado:
+   *   - "off":  nunca sobrescreve o preset atual (apenas loga sugestão).
+   *   - "high": só auto-aplica quando confiança = ALTA (padrão).
+   *   - "any":  auto-aplica em qualquer confiança (também em BAIXA).
+   */
+  const [autoApply, setAutoApply] = useState<"off" | "high" | "any">("high");
   const [detection, setDetection] = useState<DetectionResult | null>(null);
   const [decimalInfo, setDecimalInfo] = useState<{
     decimal: "." | ",";
