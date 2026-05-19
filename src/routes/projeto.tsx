@@ -166,6 +166,84 @@ function ProjetoPage() {
     step: 1,
   });
 
+  // Busca de rodovia (Overpass / OpenStreetMap)
+  const [searchTerm, setSearchTerm] = useState("SP-261");
+  const [searching, setSearching] = useState(false);
+  const [rodovia, setRodovia] = useState<RodoviaResult | null>(null);
+  const [fitBbox, setFitBbox] = useState<
+    { south: number; west: number; north: number; east: number; key: number } | null
+  >(null);
+
+  const handleSearchRoad = useCallback(async () => {
+    const term = searchTerm.trim();
+    if (!term) return;
+    setSearching(true);
+    try {
+      const result = await searchRodoviaByRef(term);
+      setRodovia(result);
+      setFitBbox({ ...result.bbox, key: Date.now() });
+      setMeta((m) => ({ ...m, name: result.ref }));
+      toast.success(`Rodovia ${result.ref} encontrada (~${result.totalKm.toFixed(1)} km).`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha na busca da rodovia.");
+    } finally {
+      setSearching(false);
+    }
+  }, [searchTerm]);
+
+  const handleSuggestStartEnd = useCallback(() => {
+    if (!rodovia || rodovia.stitched.length < 2) {
+      toast.error("Busque uma rodovia antes de sugerir início/fim.");
+      return;
+    }
+    const { stitched } = rodovia;
+    // cumulativo ao longo da rodovia destacada
+    const cum: number[] = [0];
+    for (let i = 1; i < stitched.length; i++) {
+      cum.push(
+        cum[i - 1] +
+          Math.hypot(
+            (stitched[i][0] - stitched[i - 1][0]) * 111,
+            (stitched[i][1] - stitched[i - 1][1]) *
+              111 *
+              Math.cos((stitched[i][0] * Math.PI) / 180),
+          ),
+      );
+    }
+    const total = cum[cum.length - 1];
+    const startKm = Math.min(meta.startKm, meta.endKm);
+    const endKm = Math.max(meta.startKm, meta.endKm);
+    const startOffset =
+      meta.direction === "asc" ? startKm - meta.startKm : meta.startKm - endKm;
+    // Quando ainda não há km final, distribui pela rodovia inteira.
+    const useFullRange = meta.endKm === meta.startKm;
+    const targetA = useFullRange ? 0 : Math.max(0, Math.min(total, startOffset));
+    const targetB = useFullRange
+      ? total
+      : Math.max(0, Math.min(total, targetA + Math.abs(endKm - startKm)));
+    const pickAt = (target: number): LL => {
+      let lo = 0;
+      let hi = cum.length - 1;
+      while (lo < hi - 1) {
+        const mid = (lo + hi) >> 1;
+        if (cum[mid] <= target) lo = mid;
+        else hi = mid;
+      }
+      const seg = cum[hi] - cum[lo] || 1;
+      const t = (target - cum[lo]) / seg;
+      return {
+        lat: stitched[lo][0] + t * (stitched[hi][0] - stitched[lo][0]),
+        lng: stitched[lo][1] + t * (stitched[hi][1] - stitched[lo][1]),
+      };
+    };
+    const a = pickAt(targetA);
+    const b = pickAt(targetB);
+    setStart(a);
+    setEnd(b);
+    toast.success("Início e fim sugeridos sobre a rodovia destacada.");
+  }, [rodovia, meta]);
+
+
   const [start, setStart] = useState<LL | null>(null);
   const [end, setEnd] = useState<LL | null>(null);
   const [polyline, setPolyline] = useState<[number, number][]>([]);
