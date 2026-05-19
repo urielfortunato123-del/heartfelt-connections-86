@@ -189,6 +189,8 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
   const handleFile = async (f: File | null) => {
     setFile(f);
     setParsed(null);
+    setDetection(null);
+    setDecimalInfo(null);
     if (!f) return;
     const isTxtFile = f.name.toLowerCase().endsWith(".txt") || f.name.toLowerCase().endsWith(".csv");
     if (isTxtFile) {
