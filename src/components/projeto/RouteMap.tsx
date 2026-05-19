@@ -101,6 +101,29 @@ function ClickCatcher({ onClick }: { onClick: (l: LatLng) => void }) {
   return null;
 }
 
+function FitBoundsOnChange({
+  bbox,
+  onApplied,
+}: {
+  bbox: Props["fitBbox"];
+  onApplied?: () => void;
+}) {
+  const map = useMap();
+  const lastKey = useRef<number | null>(null);
+  useEffect(() => {
+    if (!bbox) return;
+    if (lastKey.current === bbox.key) return;
+    lastKey.current = bbox.key;
+    const bounds = L.latLngBounds(
+      L.latLng(bbox.south, bbox.west),
+      L.latLng(bbox.north, bbox.east),
+    );
+    map.fitBounds(bounds, { padding: [40, 40] });
+    onApplied?.();
+  }, [map, bbox, onApplied]);
+  return null;
+}
+
 export default function RouteMap({
   start,
   end,
