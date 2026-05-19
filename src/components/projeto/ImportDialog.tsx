@@ -233,6 +233,12 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
         setDetection(result);
         if (result) {
           const tag = result.confidence === "high" ? "alta confiança" : "baixa confiança";
+          if (result.columnCheck?.promoted) {
+            log(
+              `Consistência por coluna (${result.columnCheck.rangeLabel}) promoveu confiança para ALTA.`,
+              "ok",
+            );
+          }
           if (result.confidence === "high" && result.preset !== presetName) {
             if (autoApply) {
               setPresetName(result.preset);
