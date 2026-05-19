@@ -200,6 +200,12 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
       try {
         log("Detectando separador decimal (vírgula vs ponto)…");
         const dec = await detectDecimalSeparator(f, skipHeader);
+        setDecimalInfo({
+          decimal: dec.decimal,
+          confidence: dec.confidence,
+          comma: dec.stats.comma,
+          dot: dec.stats.dot,
+        });
         const tag = dec.confidence === "high" ? "alta confiança" : "baixa confiança";
         if (dec.confidence === "high" && dec.decimal !== decimal) {
           setDecimal(dec.decimal);
