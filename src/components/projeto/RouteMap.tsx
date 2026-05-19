@@ -739,28 +739,29 @@ export default function RouteMap({
           const dx = ov.offset?.dx ?? 0;
           const dy = ov.offset?.dy ?? 0;
           const shift = (p: [number, number]): [number, number] => [p[0] + dy, p[1] + dx];
+          const baseColor = ov.style?.color ?? "#34d399";
+          const color = draggingOverlayId === ov.id ? "#f97316" : baseColor;
+          const weight = ov.style?.weight ?? 2.5;
+          const opacity = ov.style?.opacity ?? 0.9;
           return (
             <Fragment key={ov.id}>
               {ov.polylines.map((pl, i) => (
                 <Polyline
                   key={`${ov.id}-pl-${i}`}
                   positions={pl.map(shift)}
-                  pathOptions={{
-                    color: draggingOverlayId === ov.id ? "#f97316" : "#34d399",
-                    weight: 2.5,
-                    opacity: 0.9,
-                  }}
+                  pathOptions={{ color, weight, opacity }}
                 />
               ))}
               {ov.points.map((p, i) => (
                 <CircleMarker
                   key={`${ov.id}-pt-${i}`}
                   center={[p.lat + dy, p.lng + dx]}
-                  radius={3}
+                  radius={Math.max(2, weight)}
                   pathOptions={{
-                    color: "#34d399",
-                    fillColor: "#34d399",
-                    fillOpacity: 0.95,
+                    color,
+                    fillColor: color,
+                    fillOpacity: opacity,
+                    opacity,
                   }}
                 >
                   {p.label && <Tooltip direction="top">{p.label}</Tooltip>}
