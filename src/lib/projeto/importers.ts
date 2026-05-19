@@ -192,22 +192,45 @@ function toNum(s: string, decimal: "." | ","): number {
   return Number(norm);
 }
 
+export type DetectionResult = {
+  preset: keyof typeof TXT_PRESETS;
+  /** "high" só quando vence com folga (≥75% e ≥3 votos de margem). "low" caso contrário. */
+  confidence: "high" | "low";
+  /** Estatísticas brutas para debug/UI. */
+  stats: {
+    sampled: number;
+    withId: number;
+    withoutId: number;
+    aGtB_id: number;
+    bGtA_id: number;
+    aGtB_noid: number;
+    bGtA_noid: number;
+    latLngHits: number;
+  };
+};
+
+const MIN_SAMPLES = 3;
+const CONFIDENT_RATIO = 0.75;
+const CONFIDENT_MARGIN = 3;
+
+function classify(winner: number, loser: number): "high" | "low" {
+  const total = winner + loser;
+  if (total < MIN_SAMPLES) return "low";
+  if (winner / total < CONFIDENT_RATIO) return "low";
+  if (winner - loser < CONFIDENT_MARGIN) return "low";
+  return "high";
+}
+
 /**
- * Detecta heurísticamente o preset de TXT topográfico a partir do conteúdo bruto.
- * Estratégia:
- *  - identifica o separador na primeira linha de dados;
- *  - amostra até 20 linhas com ≥4 colunas numéricas iniciadas por ID inteiro;
- *  - se col1 e col2 caem em faixas de lat/lng → "Lat,Lng,Z (GNSS)";
- *  - senão compara magnitudes: no Brasil (UTM sul) Norte > Leste, então
- *    col1 > col2 ⇒ PNEZD; col2 > col1 ⇒ PENZD.
- *  - sem ID inteiro na col0, decide entre NEZ/ENZ pela mesma regra.
- * Devolve null se não tiver confiança suficiente (deixa o padrão atual).
+ * Versão "verbose" da detecção: devolve o preset vencedor + confiança + estatísticas,
+ * mesmo quando a confiança é baixa, para que a UI possa decidir o que mostrar.
+ * Devolve null apenas quando não há amostra alguma.
  */
-export async function detectTxtPreset(
+export async function detectTxtPresetVerbose(
   file: File,
   decimal: "." | "," = ".",
   skipHeaderLines = 0,
-): Promise<keyof typeof TXT_PRESETS | null> {
+): Promise<DetectionResult | null> {
   const text = await file.text();
   const lines = text
     .split(/\r?\n/)
@@ -221,7 +244,7 @@ export async function detectTxtPreset(
 
   let withId = 0;
   let withoutId = 0;
-  let aGtB_id = 0; // col1 > col2 quando há ID
+  let aGtB_id = 0;
   let bGtA_id = 0;
   let aGtB_noid = 0;
   let bGtA_noid = 0;
@@ -236,9 +259,9 @@ export async function detectTxtPreset(
     const n2 = toNum(parts[2], decimal);
     const n3 = parts[3] ? toNum(parts[3], decimal) : NaN;
 
-    const idLike = Number.isFinite(n0) && Number.isInteger(n0) && n0 >= 0 && parts[0].indexOf(".") < 0;
+    const idLike =
+      Number.isFinite(n0) && Number.isInteger(n0) && n0 >= 0 && parts[0].indexOf(".") < 0;
 
-    // Quando há ID na col0, os candidatos a Norte/Leste são col1/col2.
     if (idLike && Number.isFinite(n1) && Number.isFinite(n2) && Number.isFinite(n3)) {
       withId++;
       sampled++;
@@ -254,19 +277,57 @@ export async function detectTxtPreset(
     }
   }
 
+  const stats = { sampled, withId, withoutId, aGtB_id, bGtA_id, aGtB_noid, bGtA_noid, latLngHits };
   if (sampled === 0) return null;
 
-  // Lat/Lng quando a maioria das amostras cabe nas faixas.
-  if (latLngHits / sampled >= 0.8) return "Lat,Lng,Z (GNSS)";
-
-  if (withId >= withoutId) {
-    if (aGtB_id > bGtA_id) return "PNEZD (P,N,E,Z,D)";
-    if (bGtA_id > aGtB_id) return "PENZD (P,E,N,Z,D)";
-    return null;
+  // Lat/Lng só é alta-confiança se quase todas as amostras cabem nas faixas E há ≥3 amostras.
+  if (sampled >= MIN_SAMPLES && latLngHits / sampled >= 0.9) {
+    return { preset: "Lat,Lng,Z (GNSS)", confidence: "high", stats };
   }
-  if (aGtB_noid > bGtA_noid) return "NEZ (N,E,Z)";
-  if (bGtA_noid > aGtB_noid) return "ENZ (E,N,Z)";
+  if (latLngHits / sampled >= 0.8) {
+    return { preset: "Lat,Lng,Z (GNSS)", confidence: "low", stats };
+  }
+
+  if (withId >= withoutId && withId > 0) {
+    const aWin = aGtB_id >= bGtA_id;
+    const winner = aWin ? aGtB_id : bGtA_id;
+    const loser = aWin ? bGtA_id : aGtB_id;
+    if (winner === 0) return null;
+    return {
+      preset: aWin ? "PNEZD (P,N,E,Z,D)" : "PENZD (P,E,N,Z,D)",
+      confidence: classify(winner, loser),
+      stats,
+    };
+  }
+
+  if (withoutId > 0) {
+    const aWin = aGtB_noid >= bGtA_noid;
+    const winner = aWin ? aGtB_noid : bGtA_noid;
+    const loser = aWin ? bGtA_noid : aGtB_noid;
+    if (winner === 0) return null;
+    return {
+      preset: aWin ? "NEZ (N,E,Z)" : "ENZ (E,N,Z)",
+      confidence: classify(winner, loser),
+      stats,
+    };
+  }
+
   return null;
+}
+
+/**
+ * Detecta o preset de TXT topográfico. Só devolve o preset quando a heurística
+ * está em ALTA confiança (vence com ≥75% e ≥3 votos de margem em ≥3 amostras).
+ * Caso contrário devolve null — a UI mantém o preset atual e o usuário decide.
+ */
+export async function detectTxtPreset(
+  file: File,
+  decimal: "." | "," = ".",
+  skipHeaderLines = 0,
+): Promise<keyof typeof TXT_PRESETS | null> {
+  const r = await detectTxtPresetVerbose(file, decimal, skipHeaderLines);
+  if (!r) return null;
+  return r.confidence === "high" ? r.preset : null;
 }
 
 export async function parseTopoTxt(file: File, fmt: TxtFormat): Promise<ImportedDataset> {
