@@ -98,6 +98,10 @@ export const Route = createFileRoute("/projeto")({
         content: "Mapa + estaqueamento DER + export PDF/Excel.",
       },
     ],
+    links: [
+      // CSS do Leaflet só nesta rota (não pesa nas outras páginas).
+      { rel: "stylesheet", href: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" },
+    ],
   }),
   component: ProjetoPage,
 });
