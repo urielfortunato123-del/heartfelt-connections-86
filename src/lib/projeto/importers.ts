@@ -346,19 +346,9 @@ function checkColumns(
         if (eVals[i] > 1e5 && eVals[i] < 1e6) eInRange++;
       }
     } else {
-      // Sistema local: aceita qualquer faixa, mas exige que cada coluna seja
-      // internamente consistente (max/min < 100x) — isto é, sem mistura de unidades.
-      rangeLabel = "sistema local: cada coluna com dispersão < 100×";
-      const nMin = Math.min(...nVals.map(Math.abs).filter((v) => v > 0));
-      const nMax = Math.max(...nVals.map(Math.abs));
-      const eMin = Math.min(...eVals.map(Math.abs).filter((v) => v > 0));
-      const eMax = Math.max(...eVals.map(Math.abs));
-      const nSpread = isFinite(nMin) && nMin > 0 ? nMax / nMin : Infinity;
-      const eSpread = isFinite(eMin) && eMin > 0 ? eMax / eMin : Infinity;
-      for (let i = 0; i < sampled; i++) {
-        if (Number.isFinite(nVals[i]) && nSpread <= 100) nInRange++;
-        if (Number.isFinite(eVals[i]) && eSpread <= 100) eInRange++;
-      }
+      // Sistema local: NÃO promove confiança aqui. Faixas locais são fracas demais
+      // para sobrescrever a votação base — apenas reportamos a dispersão.
+      rangeLabel = "sistema local (faixa não-UTM) — sem promoção";
     }
   }
 
