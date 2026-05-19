@@ -547,21 +547,61 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
 
   const handleConfirm = () => {
     if (!parsed) return;
-    const polylines: [number, number][][] = [];
-    const points: OverlayFeature["points"] = [];
-    try {
-      log(`Convertendo coordenadas (${srs}) → WGS84…`);
+
+    // Tenta primeiro o SRS escolhido. Se o resultado cair fora do globo
+    // (lat fora de [-90,90] ou lng fora de [-180,180]) ou se proj4 devolver
+    // NaN, refaz a conversão usando "Sistema local" e avisa — assim o usuário
+    // nunca termina com um overlay invisível no meio do oceano.
+    const reproject = (
+      useSrs: string,
+    ): { polylines: [number, number][][]; points: OverlayFeature["points"]; valid: boolean } => {
+      const polylines: [number, number][][] = [];
+      const points: OverlayFeature["points"] = [];
+      let valid = true;
+      const check = (lat: number, lng: number) => {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) valid = false;
+        else if (Math.abs(lat) > 90 || Math.abs(lng) > 180) valid = false;
+      };
       for (const pl of parsed.polylines) {
-        polylines.push(pl.coords.map((v) => {
-          const ll = toLatLng(srs, v.x, v.y);
-          return [ll.lat, ll.lng] as [number, number];
-        }));
+        polylines.push(
+          pl.coords.map((v) => {
+            const ll = toLatLng(useSrs, v.x, v.y);
+            check(ll.lat, ll.lng);
+            return [ll.lat, ll.lng] as [number, number];
+          }),
+        );
       }
       for (const p of parsed.points) {
-        const ll = toLatLng(srs, p.x, p.y);
+        const ll = toLatLng(useSrs, p.x, p.y);
+        check(ll.lat, ll.lng);
         points.push({ lat: ll.lat, lng: ll.lng, label: p.label });
       }
-      log(`Conversão OK: ${polylines.length} polilinha(s), ${points.length} ponto(s).`, "ok");
+      return { polylines, points, valid };
+    };
+
+    let polylines: [number, number][][];
+    let points: OverlayFeature["points"];
+    let usedSrs = srs;
+    try {
+      log(`Convertendo coordenadas (${srs}) → WGS84…`);
+      let result = reproject(srs);
+      if (!result.valid) {
+        log(
+          `Coordenadas fora do globo após reprojetar com ${srs} — caindo para "Sistema local". Posicione manualmente arrastando.`,
+          "warn",
+        );
+        toast.warning(
+          `SRC ${srs} não bate com os números do arquivo. Usei "Sistema local" — arraste o overlay para o lugar certo.`,
+        );
+        usedSrs = LOCAL_SRS;
+        result = reproject(LOCAL_SRS);
+      }
+      polylines = result.polylines;
+      points = result.points;
+      log(
+        `Conversão OK (${usedSrs}): ${polylines.length} polilinha(s), ${points.length} ponto(s).`,
+        "ok",
+      );
     } catch (err) {
       toast.error("Falha ao reprojetar coordenadas. Verifique o SRC selecionado.");
       log(`Falha na conversão: ${err instanceof Error ? err.message : String(err)}`, "error");
