@@ -283,6 +283,51 @@ export default function RouteMap({
     overlays: new Set(initialOverlaysSet),
   });
 
+  // Registry das instâncias L.TileLayer por nome — permite alternar camadas
+  // imperativamente quando o viewKey muda (sem remount do MapContainer).
+  const BASE_NAMES = ["Padrão (OSM)", "Satélite", "Híbrido", "Topográfico"] as const;
+  const OVERLAY_NAMES = [
+    "Rótulos (sobre Satélite/Híbrido)",
+    "Transporte (ferrovias/transit)",
+    "Trânsito (relativo, OSM)",
+  ] as const;
+  const tileLayersRef = useRef<Map<string, L.Layer>>(new Map());
+  const registerTile = useCallback(
+    (name: string) => (layer: L.Layer | null) => {
+      if (layer) tileLayersRef.current.set(name, layer);
+    },
+    [],
+  );
+  const syncVisuals = useCallback((baseLayer: string | undefined, overlays: string[] | undefined) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const tiles = tileLayersRef.current;
+    const targetBase = baseLayer && (BASE_NAMES as readonly string[]).includes(baseLayer)
+      ? baseLayer
+      : "Padrão (OSM)";
+    if (targetBase !== visualsRef.current.baseLayer) {
+      for (const n of BASE_NAMES) {
+        const l = tiles.get(n);
+        if (!l) continue;
+        const has = map.hasLayer(l);
+        if (n === targetBase && !has) map.addLayer(l);
+        else if (n !== targetBase && has) map.removeLayer(l);
+      }
+      visualsRef.current.baseLayer = targetBase;
+    }
+    const targetOverlays = new Set(overlays ?? []);
+    for (const n of OVERLAY_NAMES) {
+      const l = tiles.get(n);
+      if (!l) continue;
+      const want = targetOverlays.has(n);
+      const has = map.hasLayer(l);
+      if (want && !has) map.addLayer(l);
+      else if (!want && has) map.removeLayer(l);
+    }
+    visualsRef.current.overlays = targetOverlays;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Reenquadramento inteligente:
   // - só refaz fitBounds quando o usuário não interagiu;
   // - só refaz quando a polyline muda de forma RELEVANTE (bbox arredondado a ~0.0005°
@@ -439,6 +484,13 @@ export default function RouteMap({
     storageKeyRef.current = storageKey;
     const map = mapRef.current;
     if (!map) return;
+    // Sincroniza camada base + overlays a partir do que foi salvo p/ esse contexto.
+    let saved: SavedView | null = null;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) saved = JSON.parse(raw) as SavedView;
+    } catch { /* ignore */ }
+    syncVisuals(saved?.baseLayer, saved?.overlays);
     const applied = applySavedView(storageKey);
     if (!applied) {
       userInteractedRef.current = false;
@@ -450,7 +502,7 @@ export default function RouteMap({
         map.setView([start.lat, start.lng], 11, { animate: false });
       }
     }
-  }, [storageKey, polyline, start, applySavedView]);
+  }, [storageKey, polyline, start, applySavedView, syncVisuals]);
 
   // Retorno da aba/janela: reaplica a última view salva e revalida tiles sem flicker.
   useEffect(() => {
@@ -611,12 +663,14 @@ export default function RouteMap({
         <LayersControl position="topright" collapsed>
           <BaseLayer checked={initialBaseLayer === "Padrão (OSM)"} name="Padrão (OSM)">
             <TileLayer
+              ref={registerTile("Padrão (OSM)")}
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
           </BaseLayer>
           <BaseLayer checked={initialBaseLayer === "Satélite"} name="Satélite">
             <TileLayer
+              ref={registerTile("Satélite")}
               attribution="Tiles &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
@@ -624,6 +678,7 @@ export default function RouteMap({
           </BaseLayer>
           <BaseLayer checked={initialBaseLayer === "Híbrido"} name="Híbrido">
             <TileLayer
+              ref={registerTile("Híbrido")}
               attribution="Tiles &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
@@ -631,6 +686,7 @@ export default function RouteMap({
           </BaseLayer>
           <BaseLayer checked={initialBaseLayer === "Topográfico"} name="Topográfico">
             <TileLayer
+              ref={registerTile("Topográfico")}
               attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
               url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
               maxZoom={17}
@@ -638,6 +694,7 @@ export default function RouteMap({
           </BaseLayer>
           <Overlay checked={initialOverlaysSet.has("Rótulos (sobre Satélite/Híbrido)")} name="Rótulos (sobre Satélite/Híbrido)">
             <TileLayer
+              ref={registerTile("Rótulos (sobre Satélite/Híbrido)")}
               attribution="Labels &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
@@ -645,6 +702,7 @@ export default function RouteMap({
           </Overlay>
           <Overlay checked={initialOverlaysSet.has("Transporte (ferrovias/transit)")} name="Transporte (ferrovias/transit)">
             <TileLayer
+              ref={registerTile("Transporte (ferrovias/transit)")}
               attribution='&copy; <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>'
               url="https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png"
               maxZoom={19}
@@ -653,6 +711,7 @@ export default function RouteMap({
           </Overlay>
           <Overlay checked={initialOverlaysSet.has("Trânsito (relativo, OSM)")} name="Trânsito (relativo, OSM)">
             <TileLayer
+              ref={registerTile("Trânsito (relativo, OSM)")}
               attribution="OpenStreetMap"
               url="https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png"
               maxZoom={18}
