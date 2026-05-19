@@ -199,6 +199,10 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<ImportedDataset | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ value: number; label: string } | null>(null);
+  const setStage = useCallback((value: number, label: string) => {
+    setProgress({ value: Math.max(0, Math.min(100, value)), label });
+  }, []);
   const [srs, setSrs] = useState("EPSG:31983");
   const [presetName, setPresetName] = useState<keyof typeof TXT_PRESETS>("PENZD (P,E,N,Z,D)");
   const [skipHeader, setSkipHeader] = useState(0);
