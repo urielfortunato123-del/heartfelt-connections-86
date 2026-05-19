@@ -654,6 +654,53 @@ function ProjetoPage() {
           </div>
 
           <div className="space-y-1">
+            <Label>Buscar rodovia no mapa</Label>
+            <div className="flex gap-2">
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSearchRoad();
+                  }
+                }}
+                placeholder="Ex.: SP-261, BR-116"
+              />
+              <Button
+                type="button"
+                onClick={handleSearchRoad}
+                disabled={searching || !searchTerm.trim()}
+                title="Localiza a rodovia no OpenStreetMap e destaca no mapa"
+              >
+                {searching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            {rodovia && (
+              <div className="flex items-center justify-between gap-2 rounded border border-cyan-400/20 bg-cyan-400/5 px-2 py-1 text-xs text-white/80">
+                <span>
+                  <b className="text-cyan-300">{rodovia.ref}</b> · ~
+                  {rodovia.totalKm.toFixed(1)} km destacados
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSuggestStartEnd}
+                  title="Coloca início e fim sobre a rodovia destacada usando os km informados"
+                >
+                  <Wand2 className="mr-1 h-3 w-3" /> Sugerir início/fim
+                </Button>
+              </div>
+            )}
+          </div>
+
+
+          <div className="space-y-1">
             <Label>Sentido</Label>
             <div className="grid grid-cols-2 gap-2">
               <Button
