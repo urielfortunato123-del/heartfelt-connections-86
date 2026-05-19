@@ -41,7 +41,8 @@ import {
 
 
 
-const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
+import type RouteMapType from "@/components/projeto/RouteMap";
+type RouteMapComponent = ComponentType<React.ComponentProps<typeof RouteMapType>>;
 import { PdfPreviewDialog } from "@/components/projeto/PdfPreviewDialog";
 
 function MapPlaceholder({ label }: { label: string }) {
