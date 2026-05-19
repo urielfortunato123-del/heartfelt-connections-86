@@ -663,12 +663,14 @@ export default function RouteMap({
         <LayersControl position="topright" collapsed>
           <BaseLayer checked={initialBaseLayer === "Padrão (OSM)"} name="Padrão (OSM)">
             <TileLayer
+              ref={registerTile("Padrão (OSM)")}
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
           </BaseLayer>
           <BaseLayer checked={initialBaseLayer === "Satélite"} name="Satélite">
             <TileLayer
+              ref={registerTile("Satélite")}
               attribution="Tiles &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
@@ -676,6 +678,7 @@ export default function RouteMap({
           </BaseLayer>
           <BaseLayer checked={initialBaseLayer === "Híbrido"} name="Híbrido">
             <TileLayer
+              ref={registerTile("Híbrido")}
               attribution="Tiles &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
@@ -683,6 +686,7 @@ export default function RouteMap({
           </BaseLayer>
           <BaseLayer checked={initialBaseLayer === "Topográfico"} name="Topográfico">
             <TileLayer
+              ref={registerTile("Topográfico")}
               attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
               url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
               maxZoom={17}
@@ -690,6 +694,7 @@ export default function RouteMap({
           </BaseLayer>
           <Overlay checked={initialOverlaysSet.has("Rótulos (sobre Satélite/Híbrido)")} name="Rótulos (sobre Satélite/Híbrido)">
             <TileLayer
+              ref={registerTile("Rótulos (sobre Satélite/Híbrido)")}
               attribution="Labels &copy; Esri"
               url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
               maxZoom={19}
@@ -697,6 +702,7 @@ export default function RouteMap({
           </Overlay>
           <Overlay checked={initialOverlaysSet.has("Transporte (ferrovias/transit)")} name="Transporte (ferrovias/transit)">
             <TileLayer
+              ref={registerTile("Transporte (ferrovias/transit)")}
               attribution='&copy; <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>'
               url="https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png"
               maxZoom={19}
@@ -705,6 +711,7 @@ export default function RouteMap({
           </Overlay>
           <Overlay checked={initialOverlaysSet.has("Trânsito (relativo, OSM)")} name="Trânsito (relativo, OSM)">
             <TileLayer
+              ref={registerTile("Trânsito (relativo, OSM)")}
               attribution="OpenStreetMap"
               url="https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png"
               maxZoom={18}
