@@ -44,6 +44,41 @@ import {
 const RouteMap = lazy(() => import("@/components/projeto/RouteMap"));
 import { PdfPreviewDialog } from "@/components/projeto/PdfPreviewDialog";
 
+function MapPlaceholder({ label }: { label: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="relative flex h-[480px] w-full items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-slate-800/40"
+    >
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(168,85,247,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,0.18) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
+      <div aria-hidden className="absolute inset-0 animate-pulse bg-white/[0.02]" />
+      <div className="relative flex flex-col items-center gap-3 text-center">
+        <svg
+          className="h-8 w-8 animate-spin text-cyan-300"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+          <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+        <div className="text-sm font-medium text-white/90">{label}</div>
+        <div className="text-xs text-white/50">Aguardando Leaflet no navegador</div>
+      </div>
+    </div>
+  );
+}
+
+
 export const Route = createFileRoute("/projeto")({
   head: () => ({
     meta: [
@@ -708,7 +743,7 @@ function ProjetoPage() {
         {/* Mapa + tabela */}
         <section className="space-y-4">
           {mounted ? (
-            <Suspense fallback={<div className="h-[480px] animate-pulse rounded-lg bg-white/5" />}>
+            <Suspense fallback={<MapPlaceholder label="Carregando mapa…" />}>
               <RouteMap
                 start={start}
                 end={end}
@@ -751,9 +786,8 @@ function ProjetoPage() {
                 onMovePointEnd={endLive}
               />
             </Suspense>
-
           ) : (
-            <div className="h-[480px] rounded-lg border border-white/10 bg-white/5" />
+            <MapPlaceholder label="Inicializando mapa…" />
           )}
 
           {loading && <div className="text-sm text-cyan-300">Calculando rota…</div>}
