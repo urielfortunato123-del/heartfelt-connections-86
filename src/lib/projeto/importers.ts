@@ -265,11 +265,23 @@ export type ColumnCheck = {
   promoted: boolean;
 };
 
+export type SampleContribution = {
+  /** Número da linha no arquivo (1-indexed, já considerando skipHeaderLines). */
+  lineNumber: number;
+  /** Texto cru da linha (truncado em ~120 chars). */
+  raw: string;
+  /** Valores extraídos como N e E sob a interpretação do preset escolhido. */
+  n: number;
+  e: number;
+  /** Quão forte a linha "vota" no preset: combina margem de N vs E e aderência à faixa. */
+  score: number;
+  /** Rótulo humano descrevendo por que essa linha contribuiu. */
+  reason: string;
+};
+
 export type DetectionResult = {
   preset: keyof typeof TXT_PRESETS;
-  /** "high" só quando vence com folga (≥75% e ≥3 votos de margem). "low" caso contrário. */
   confidence: "high" | "low";
-  /** Estatísticas brutas para debug/UI. */
   stats: {
     sampled: number;
     withId: number;
@@ -280,8 +292,9 @@ export type DetectionResult = {
     bGtA_noid: number;
     latLngHits: number;
   };
-  /** 2ª heurística: consistência por coluna ao longo das linhas. */
   columnCheck?: ColumnCheck;
+  /** Top amostras (ordenadas por score desc) que mais contribuíram para o preset vencedor. */
+  topSamples?: SampleContribution[];
 };
 
 export type DetectionThresholds = {
@@ -398,10 +411,18 @@ export async function detectTxtPresetVerbose(
   let bGtA_noid = 0;
   let latLngHits = 0;
   let sampled = 0;
-  /** Guarda (a, b, hasId) por linha amostrada para o check de coluna posterior. */
-  const rows: Array<{ a: number; b: number; hasId: boolean }> = [];
+  /** Guarda (a, b, hasId, raw, lineNumber) por linha amostrada. */
+  const rows: Array<{
+    a: number;
+    b: number;
+    hasId: boolean;
+    raw: string;
+    lineNumber: number;
+  }> = [];
 
-  for (const raw of lines.slice(0, 20)) {
+  const slice = lines.slice(0, 20);
+  for (let i = 0; i < slice.length; i++) {
+    const raw = slice[i];
     const parts = raw.split(re).map((s) => s.trim()).filter(Boolean);
     if (parts.length < 3) continue;
     const n0 = toNum(parts[0], decimal);
@@ -411,18 +432,19 @@ export async function detectTxtPresetVerbose(
 
     const idLike =
       Number.isFinite(n0) && Number.isInteger(n0) && n0 >= 0 && parts[0].indexOf(".") < 0;
+    const lineNumber = skipHeaderLines + i + 1;
 
     if (idLike && Number.isFinite(n1) && Number.isFinite(n2) && Number.isFinite(n3)) {
       withId++;
       sampled++;
-      rows.push({ a: n1, b: n2, hasId: true });
+      rows.push({ a: n1, b: n2, hasId: true, raw, lineNumber });
       if (Math.abs(n1) <= 90 && Math.abs(n2) <= 180) latLngHits++;
       if (n1 > n2) aGtB_id++;
       else if (n2 > n1) bGtA_id++;
     } else if (!idLike && Number.isFinite(n0) && Number.isFinite(n1)) {
       withoutId++;
       sampled++;
-      rows.push({ a: n0, b: n1, hasId: false });
+      rows.push({ a: n0, b: n1, hasId: false, raw, lineNumber });
       if (Math.abs(n0) <= 90 && Math.abs(n1) <= 180) latLngHits++;
       if (n0 > n1) aGtB_noid++;
       else if (n1 > n0) bGtA_noid++;
@@ -443,6 +465,7 @@ export async function detectTxtPresetVerbose(
     const eIdx = order.indexOf("E");
     const nVals: number[] = [];
     const eVals: number[] = [];
+    const perRow: Array<{ n: number; e: number; raw: string; lineNumber: number }> = [];
     for (const r of rows) {
       // Em rows, a = 1ª coord (índice 1 com ID, índice 0 sem); b = 2ª coord.
       const aIdx = r.hasId ? 1 : 0;
@@ -451,10 +474,61 @@ export async function detectTxtPresetVerbose(
       const ev = eIdx === aIdx ? r.a : eIdx === bIdx ? r.b : NaN;
       if (Number.isFinite(nv)) nVals.push(nv);
       if (Number.isFinite(ev)) eVals.push(ev);
+      perRow.push({ n: nv, e: ev, raw: r.raw, lineNumber: r.lineNumber });
     }
     const columnCheck = checkColumns(preset, nVals, eVals, baseConfidence, thresholds);
     const confidence = columnCheck.promoted ? "high" : baseConfidence;
-    return { preset, confidence, stats, columnCheck };
+
+    // === Top contribuições ===
+    // Pontua cada linha pela aderência ao preset escolhido:
+    //   - lat/lng: bônus se cabe em [-90,90] / [-180,180]
+    //   - UTM Sul: bônus se N∈[1e6,1e7] e E∈[1e5,1e6]
+    //   - Caso contrário: margem |N-E| relativa (linhas que claramente respeitam N>E pontuam mais).
+    const isLatLng = preset === "Lat,Lng,Z (GNSS)";
+    const contribs: SampleContribution[] = perRow
+      .filter((r) => Number.isFinite(r.n) && Number.isFinite(r.e))
+      .map((r) => {
+        const reasons: string[] = [];
+        let score = 0;
+        if (isLatLng) {
+          if (Math.abs(r.n) <= 90 && Math.abs(r.e) <= 180) {
+            score += 10;
+            reasons.push("lat/lng dentro da faixa");
+          } else {
+            score -= 5;
+            reasons.push("fora da faixa lat/lng");
+          }
+        } else {
+          const nUtm = r.n > 1e6 && r.n < 1e7;
+          const eUtm = r.e > 1e5 && r.e < 1e6;
+          if (nUtm && eUtm) {
+            score += 10;
+            reasons.push("encaixa em UTM Sul");
+          } else if (r.n > r.e) {
+            score += 3;
+            reasons.push("N > E (orientação OK)");
+          } else if (r.e > r.n) {
+            score -= 3;
+            reasons.push("E > N (vai contra o preset)");
+          }
+          // Bônus pela margem relativa entre N e E.
+          const denom = Math.max(Math.abs(r.n), Math.abs(r.e), 1);
+          const margin = Math.abs(r.n - r.e) / denom;
+          score += Math.min(5, margin * 5);
+        }
+        return {
+          lineNumber: r.lineNumber,
+          raw: r.raw.length > 120 ? r.raw.slice(0, 117) + "…" : r.raw,
+          n: r.n,
+          e: r.e,
+          score: Math.round(score * 10) / 10,
+          reason: reasons.join(" · ") || "sem sinal forte",
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    return { preset, confidence, stats, columnCheck, topSamples: contribs };
   };
 
   // Lat/Lng só é alta-confiança se quase todas as amostras cabem nas faixas E há amostras suficientes.
