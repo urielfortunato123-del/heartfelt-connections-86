@@ -864,6 +864,8 @@ function ProjetoPage() {
                 mode={mode}
                 onClick={handleMapClick}
                 onReady={() => setMapReady(true)}
+                highlightedRoad={rodovia?.ways}
+                fitBbox={fitBbox}
                 onUpdatePoint={(id, patch) =>
                   commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                 }
