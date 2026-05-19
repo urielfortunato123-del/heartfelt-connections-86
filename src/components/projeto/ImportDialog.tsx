@@ -230,6 +230,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
           `Detectando formato (min=${thresholds.minSamples}, ratio=${thresholds.ratio.toFixed(2)}, margem=${thresholds.margin})…`,
         );
         const result = await detectTxtPresetVerbose(f, effectiveDecimal, skipHeader, thresholds);
+        setDetection(result);
         if (result) {
           const tag = result.confidence === "high" ? "alta confiança" : "baixa confiança";
           if (result.confidence === "high" && result.preset !== presetName) {
