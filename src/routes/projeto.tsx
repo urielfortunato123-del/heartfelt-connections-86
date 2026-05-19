@@ -142,23 +142,25 @@ function ProjetoPage() {
     if (!mounted) return;
     if (typeof window === "undefined") return;
     let cancelled = false;
-    (async () => {
+    // Idle-load: não bloqueia o primeiro paint do shell.
+    const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
+    const schedule = w.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1));
+    const handle = schedule(async () => {
       try {
-        const [mod] = await Promise.all([
+        const [mod, leaflet] = await Promise.all([
           import("@/components/projeto/RouteMap"),
           import("leaflet"),
         ]);
-        // Garante que a API do Leaflet está exposta globalmente antes de montar.
-        if (typeof (window as unknown as { L?: unknown }).L === "undefined") {
-          (window as unknown as { L: unknown }).L = (await import("leaflet")).default;
-        }
+        (window as unknown as { L: unknown }).L = leaflet.default;
         if (!cancelled) setRouteMap(() => mod.default as RouteMapComponent);
       } catch (err) {
         console.error("Falha ao carregar o RouteMap/Leaflet:", err);
       }
-    })();
+    });
     return () => {
       cancelled = true;
+      const w2 = window as unknown as { cancelIdleCallback?: (h: number) => void };
+      w2.cancelIdleCallback?.(handle as number);
     };
   }, [mounted]);
 
