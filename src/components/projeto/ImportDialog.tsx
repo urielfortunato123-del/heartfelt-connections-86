@@ -245,23 +245,28 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
               "ok",
             );
           }
-          if (result.confidence === "high" && result.preset !== presetName) {
-            if (autoApply) {
+          if (result.preset !== presetName) {
+            const shouldApply =
+              autoApply === "any" ||
+              (autoApply === "high" && result.confidence === "high");
+            if (shouldApply) {
               setPresetName(result.preset);
               toast.info(`Formato detectado: ${result.preset} (${tag})`);
-              log(`Formato auto-aplicado: ${result.preset} (${tag})`, "ok");
+              log(
+                `Formato auto-aplicado: ${result.preset} (${tag}, política=${autoApply}).`,
+                result.confidence === "high" ? "ok" : "warn",
+              );
               return;
             }
             log(
-              `Sugestão (auto-aplicar desativado): ${result.preset} (${tag}). Mantido "${presetName}".`,
+              `Sugestão (auto-aplicar=${autoApply}): ${result.preset} (${tag}). Mantido "${presetName}" — troque manualmente se quiser.`,
               "warn",
             );
           } else if (result.confidence === "high") {
             log(`Formato confirmado: ${result.preset} (${tag})`, "ok");
           } else {
-            // Não sobrescreve quando incerto — apenas sugere ao usuário.
             log(
-              `Sugestão: ${result.preset} (${tag}). Mantido "${presetName}" — confira a prévia ou afrouxe os limiares.`,
+              `Confirmação fraca: ${result.preset} (${tag}). Confira a prévia ou afrouxe os limiares.`,
               "warn",
             );
           }
