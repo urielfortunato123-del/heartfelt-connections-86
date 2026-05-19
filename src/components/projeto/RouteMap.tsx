@@ -281,6 +281,37 @@ export default function RouteMap({
     };
   }, []);
 
+  // Quando a chave de contexto muda (projeto/filtros diferentes), troca a sub-chave
+  // de persistência e reaplica a view salva para esse contexto (ou refaz fitBounds).
+  useEffect(() => {
+    if (storageKeyRef.current === storageKey) return;
+    storageKeyRef.current = storageKey;
+    const map = mapRef.current;
+    if (!map) return;
+    let applied = false;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) {
+        const v = JSON.parse(raw) as { lat: number; lng: number; zoom: number };
+        if (Number.isFinite(v.lat) && Number.isFinite(v.lng) && Number.isFinite(v.zoom)) {
+          map.setView([v.lat, v.lng], v.zoom);
+          userInteractedRef.current = true;
+          applied = true;
+        }
+      }
+    } catch { /* ignore */ }
+    if (!applied) {
+      userInteractedRef.current = false;
+      polylineSignatureRef.current = "";
+      if (polyline.length > 1) {
+        const bounds = L.latLngBounds(polyline.map(([a, b]) => L.latLng(a, b)));
+        map.fitBounds(bounds, { padding: [30, 30] });
+      } else if (start) {
+        map.setView([start.lat, start.lng], 11);
+      }
+    }
+  }, [storageKey, polyline, start]);
+
   // Cleanup final: remove a instância do Leaflet ao desmontar para liberar
   // listeners de tiles/eventos e evitar callbacks tardios em estado já desmontado.
   useEffect(() => {
