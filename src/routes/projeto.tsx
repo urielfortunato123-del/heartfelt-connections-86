@@ -950,6 +950,9 @@ function ProjetoPage() {
                 onReady={() => setMapReady(true)}
                 highlightedRoad={rodovia?.ways}
                 fitBbox={fitBbox}
+                overlays={overlays}
+                draggingOverlayId={draggingOverlayId}
+                onOverlayDrag={handleOverlayDrag}
                 onUpdatePoint={(id, patch) =>
                   commitManuals((arr) => arr.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                 }
