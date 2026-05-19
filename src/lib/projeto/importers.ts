@@ -411,10 +411,18 @@ export async function detectTxtPresetVerbose(
   let bGtA_noid = 0;
   let latLngHits = 0;
   let sampled = 0;
-  /** Guarda (a, b, hasId) por linha amostrada para o check de coluna posterior. */
-  const rows: Array<{ a: number; b: number; hasId: boolean }> = [];
+  /** Guarda (a, b, hasId, raw, lineNumber) por linha amostrada. */
+  const rows: Array<{
+    a: number;
+    b: number;
+    hasId: boolean;
+    raw: string;
+    lineNumber: number;
+  }> = [];
 
-  for (const raw of lines.slice(0, 20)) {
+  const slice = lines.slice(0, 20);
+  for (let i = 0; i < slice.length; i++) {
+    const raw = slice[i];
     const parts = raw.split(re).map((s) => s.trim()).filter(Boolean);
     if (parts.length < 3) continue;
     const n0 = toNum(parts[0], decimal);
@@ -424,18 +432,19 @@ export async function detectTxtPresetVerbose(
 
     const idLike =
       Number.isFinite(n0) && Number.isInteger(n0) && n0 >= 0 && parts[0].indexOf(".") < 0;
+    const lineNumber = skipHeaderLines + i + 1;
 
     if (idLike && Number.isFinite(n1) && Number.isFinite(n2) && Number.isFinite(n3)) {
       withId++;
       sampled++;
-      rows.push({ a: n1, b: n2, hasId: true });
+      rows.push({ a: n1, b: n2, hasId: true, raw, lineNumber });
       if (Math.abs(n1) <= 90 && Math.abs(n2) <= 180) latLngHits++;
       if (n1 > n2) aGtB_id++;
       else if (n2 > n1) bGtA_id++;
     } else if (!idLike && Number.isFinite(n0) && Number.isFinite(n1)) {
       withoutId++;
       sampled++;
-      rows.push({ a: n0, b: n1, hasId: false });
+      rows.push({ a: n0, b: n1, hasId: false, raw, lineNumber });
       if (Math.abs(n0) <= 90 && Math.abs(n1) <= 180) latLngHits++;
       if (n0 > n1) aGtB_noid++;
       else if (n1 > n0) bGtA_noid++;
