@@ -137,9 +137,13 @@ export default function RouteMap({
   onMovePoint,
   onMovePointEnd,
   onReady,
+  highlightedRoad,
+  fitBbox,
 }: Props) {
 
   const mapRef = useRef<L.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const VIEW_KEY = "pista.mapView.v1";
   const polylineSignatureRef = useRef<string>("");
   const userInteractedRef = useRef<boolean>(false);
