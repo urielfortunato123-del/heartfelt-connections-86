@@ -154,6 +154,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: Props) {
       kind: parsed.kind,
       polylines,
       points,
+      style: { color: "#34d399", weight: 2.5, opacity: 0.9 },
     };
     onImport(overlay);
     onOpenChange(false);
