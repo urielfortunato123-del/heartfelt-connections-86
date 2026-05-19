@@ -318,6 +318,26 @@ export default function RouteMap({
     }
   }, []);
 
+  const resetView = useCallback(() => {
+    const map = mapRef.current;
+    try {
+      window.localStorage.removeItem(VIEW_KEY);
+    } catch {
+      /* ignore */
+    }
+    userInteractedRef.current = false;
+    polylineSignatureRef.current = "";
+    if (!map) return;
+    if (polyline.length > 1) {
+      const bounds = L.latLngBounds(polyline.map(([a, b]) => L.latLng(a, b)));
+      map.fitBounds(bounds, { padding: [30, 30] });
+    } else if (start) {
+      map.setView([start.lat, start.lng], 11);
+    } else {
+      map.setView([-22.0154, -47.8911], 11);
+    }
+  }, [polyline, start]);
+
   // Em modo "arrastar overlay", desliga o pan do mapa para que o mouse mova só o overlay.
   useEffect(() => {
     const map = mapRef.current;
