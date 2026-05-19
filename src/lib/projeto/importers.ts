@@ -266,15 +266,26 @@ export type DetectionResult = {
   };
 };
 
-const MIN_SAMPLES = 3;
-const CONFIDENT_RATIO = 0.75;
-const CONFIDENT_MARGIN = 3;
+export type DetectionThresholds = {
+  /** Mínimo de amostras para considerar "alta confiança". Default: 3. */
+  minSamples: number;
+  /** Ratio mínimo do vencedor sobre o total (0..1). Default: 0.75. */
+  ratio: number;
+  /** Margem mínima de votos entre vencedor e perdedor. Default: 3. */
+  margin: number;
+};
 
-function classify(winner: number, loser: number): "high" | "low" {
+export const DEFAULT_THRESHOLDS: DetectionThresholds = {
+  minSamples: 3,
+  ratio: 0.75,
+  margin: 3,
+};
+
+function classify(winner: number, loser: number, t: DetectionThresholds): "high" | "low" {
   const total = winner + loser;
-  if (total < MIN_SAMPLES) return "low";
-  if (winner / total < CONFIDENT_RATIO) return "low";
-  if (winner - loser < CONFIDENT_MARGIN) return "low";
+  if (total < t.minSamples) return "low";
+  if (winner / total < t.ratio) return "low";
+  if (winner - loser < t.margin) return "low";
   return "high";
 }
 
@@ -287,6 +298,7 @@ export async function detectTxtPresetVerbose(
   file: File,
   decimal: "." | "," = ".",
   skipHeaderLines = 0,
+  thresholds: DetectionThresholds = DEFAULT_THRESHOLDS,
 ): Promise<DetectionResult | null> {
   const text = await file.text();
   const lines = text
