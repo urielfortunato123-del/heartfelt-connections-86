@@ -181,14 +181,25 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     if (isTxtFile) {
       try {
         log("Detectando formato (PNEZD/PENZD/Lat-Lng)…");
-        const detected = await detectTxtPreset(f, decimal, skipHeader);
-        if (detected && detected !== presetName) {
-          setPresetName(detected);
-          toast.info(`Formato detectado: ${detected}`);
-          log(`Formato detectado: ${detected}`, "ok");
-          return;
+        const result = await detectTxtPresetVerbose(f, decimal, skipHeader);
+        if (result) {
+          const tag = result.confidence === "high" ? "alta confiança" : "baixa confiança";
+          if (result.confidence === "high" && result.preset !== presetName) {
+            setPresetName(result.preset);
+            toast.info(`Formato detectado: ${result.preset} (${tag})`);
+            log(`Formato detectado: ${result.preset} (${tag})`, "ok");
+            return;
+          }
+          if (result.confidence === "high") {
+            log(`Formato confirmado: ${result.preset} (${tag})`, "ok");
+          } else {
+            // Não sobrescreve quando incerto — apenas sugere ao usuário.
+            log(
+              `Sugestão: ${result.preset} (${tag}). Mantido "${presetName}" — confira a prévia.`,
+              "warn",
+            );
+          }
         }
-        if (detected) log(`Formato confirmado: ${detected}`, "ok");
       } catch {
         log("Detecção automática falhou — usando formato atual.", "warn");
       }
