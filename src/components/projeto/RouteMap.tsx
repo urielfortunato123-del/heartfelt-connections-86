@@ -53,6 +53,17 @@ type Props = {
   highlightedRoad?: [number, number][][];
   /** bbox a enquadrar imperativamente (incrementa a cada nova busca). */
   fitBbox?: { south: number; west: number; north: number; east: number; key: number } | null;
+  /** Overlays importados (DXF/TXT) sobre o mapa. */
+  overlays?: Array<{
+    id: string;
+    polylines: [number, number][][];
+    points: Array<{ lat: number; lng: number; label?: string }>;
+    offset?: { dx: number; dy: number };
+  }>;
+  /** Id do overlay que o usuário está arrastando (modo posicionar). */
+  draggingOverlayId?: string | null;
+  /** Recebe arrasto em graus (relativo). */
+  onOverlayDrag?: (id: string, deltaLat: number, deltaLng: number) => void;
 };
 
 function ReadySignal({ onReady }: { onReady?: () => void }) {
