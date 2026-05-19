@@ -1,7 +1,7 @@
 // Diálogo de importação: aceita .dxf e .txt/.csv, deixa o usuário escolher
 // o SRC, mapear o formato do TXT, e preview básico (contagem + bbox).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,158 @@ import {
   type TxtFormat,
 } from "@/lib/projeto/importers";
 import { LOCAL_SRS, SRS_OPTIONS, looksLikeLatLng, looksLikeUTM, toLatLng, validateSrsBbox } from "@/lib/projeto/srs";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
+
+/**
+ * Mini visualizador SVG dos pontos/polilinhas importadas, com zoom e reset
+ * para inspecionar arquivos grandes sem precisar abrir no mapa.
+ */
+function PreviewCanvas({ parsed }: { parsed: ImportedDataset }) {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
+
+  const bbox = parsed.bbox;
+  const W = 560;
+  const H = 280;
+  const PAD = 12;
+
+  const transform = useMemo(() => {
+    if (!bbox) return null;
+    const dx = bbox.maxX - bbox.minX || 1;
+    const dy = bbox.maxY - bbox.minY || 1;
+    const innerW = W - PAD * 2;
+    const innerH = H - PAD * 2;
+    const scale = Math.min(innerW / dx, innerH / dy);
+    const cx = (bbox.minX + bbox.maxX) / 2;
+    const cy = (bbox.minY + bbox.maxY) / 2;
+    return (x: number, y: number): [number, number] => {
+      const px = W / 2 + (x - cx) * scale;
+      // inverte Y (norte para cima)
+      const py = H / 2 - (y - cy) * scale;
+      return [px, py];
+    };
+  }, [bbox]);
+
+  if (!bbox || !transform) {
+    return (
+      <div className="grid h-32 place-items-center rounded border border-white/10 bg-black/40 text-xs text-white/40">
+        Sem coordenadas para pré-visualizar
+      </div>
+    );
+  }
+
+  // viewBox responde ao zoom/pan: quanto maior o zoom, menor a área visível.
+  const vw = W / zoom;
+  const vh = H / zoom;
+  const vx = (W - vw) / 2 - pan.x / zoom;
+  const vy = (H - vh) / 2 - pan.y / zoom;
+
+  const reset = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  return (
+    <div className="relative mt-2 overflow-hidden rounded border border-white/10 bg-black/60">
+      <svg
+        viewBox={`${vx} ${vy} ${vw} ${vh}`}
+        width="100%"
+        height={H}
+        className="block touch-none select-none"
+        onWheel={(e) => {
+          e.preventDefault();
+          const factor = e.deltaY > 0 ? 0.85 : 1.18;
+          setZoom((z) => Math.max(0.5, Math.min(40, z * factor)));
+        }}
+        onPointerDown={(e) => {
+          (e.target as Element).setPointerCapture?.(e.pointerId);
+          dragRef.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerMove={(e) => {
+          if (!dragRef.current) return;
+          const dx = e.clientX - dragRef.current.x;
+          const dy = e.clientY - dragRef.current.y;
+          dragRef.current = { x: e.clientX, y: e.clientY };
+          setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+        }}
+        onPointerUp={() => {
+          dragRef.current = null;
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+        }}
+        style={{ cursor: dragRef.current ? "grabbing" : "grab" }}
+      >
+        {parsed.polylines.map((pl, i) => {
+          const pts = pl.coords
+            .map((c) => {
+              const [px, py] = transform(c.x, c.y);
+              return `${px},${py}`;
+            })
+            .join(" ");
+          return (
+            <polyline
+              key={`pl-${i}`}
+              points={pts}
+              fill="none"
+              stroke="#22d3ee"
+              strokeWidth={1.2 / zoom}
+              opacity={0.85}
+            />
+          );
+        })}
+        {parsed.points.map((p, i) => {
+          const [px, py] = transform(p.x, p.y);
+          return (
+            <circle
+              key={`pt-${i}`}
+              cx={px}
+              cy={py}
+              r={Math.max(0.6, 1.6 / zoom)}
+              fill="#a855f7"
+            />
+          );
+        })}
+      </svg>
+
+      <div className="absolute right-2 top-2 flex gap-1">
+        <button
+          type="button"
+          onClick={() => setZoom((z) => Math.min(40, z * 1.4))}
+          className="grid h-7 w-7 place-items-center rounded bg-black/70 text-white/80 hover:bg-black/90"
+          title="Mais zoom"
+          aria-label="Mais zoom"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom((z) => Math.max(0.5, z / 1.4))}
+          className="grid h-7 w-7 place-items-center rounded bg-black/70 text-white/80 hover:bg-black/90"
+          title="Menos zoom"
+          aria-label="Menos zoom"
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          className="grid h-7 w-7 place-items-center rounded bg-black/70 text-white/80 hover:bg-black/90"
+          title="Enquadrar tudo"
+          aria-label="Enquadrar tudo"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div className="absolute bottom-1 left-2 font-mono text-[10px] text-white/40">
+        zoom {zoom.toFixed(1)}× · arraste para mover · roda para zoom
+      </div>
+    </div>
+  );
+}
 
 export type OverlayFeature = {
   id: string;
@@ -958,6 +1108,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                     {parsed.bbox.minY.toFixed(2)} → {parsed.bbox.maxY.toFixed(2)}]
                   </div>
                 )}
+                <PreviewCanvas parsed={parsed} />
                 {parsed.georef && (
                   <div className="text-amber-300">⚠ {parsed.georef.hint}</div>
                 )}
