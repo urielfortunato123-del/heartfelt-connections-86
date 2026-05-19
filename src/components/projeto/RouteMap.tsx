@@ -246,16 +246,53 @@ export default function RouteMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fit bounds APENAS quando a rota muda de identidade (novos endpoints), respeitando interação do usuário.
+  // Reenquadramento inteligente:
+  // - só refaz fitBounds quando o usuário não interagiu;
+  // - só refaz quando a polyline muda de forma RELEVANTE (bbox arredondado a ~0.0005°
+  //   ≈ 50m, ou contagem com salto > 10%), evitando refits por jitter numérico;
+  // - quando não há polyline, garante que o mapa fique visível usando, em ordem,
+  //   start+end → start → rodovia destacada → bbox externo → centro default.
   useEffect(() => {
-    if (!mapRef.current || polyline.length < 2) return;
-    const sig = `${polyline[0]?.join(",")}|${polyline[polyline.length - 1]?.join(",")}|${polyline.length}`;
+    const map = mapRef.current;
+    if (!map) return;
+    if (userInteractedRef.current) return;
+
+    // Caso vazio: ainda assim, garante que algo esteja visível.
+    if (polyline.length < 2) {
+      const fallbackSig = (() => {
+        if (start && end) return `se|${start.lat.toFixed(4)},${start.lng.toFixed(4)}|${end.lat.toFixed(4)},${end.lng.toFixed(4)}`;
+        if (start) return `s|${start.lat.toFixed(4)},${start.lng.toFixed(4)}`;
+        if (highlightedRoad?.length) return `hl|${highlightedRoad.length}|${highlightedRoad[0]?.length ?? 0}`;
+        return "";
+      })();
+      if (!fallbackSig || fallbackSig === polylineSignatureRef.current) return;
+      polylineSignatureRef.current = fallbackSig;
+      if (start && end) {
+        map.fitBounds(L.latLngBounds([[start.lat, start.lng], [end.lat, end.lng]]), { padding: [40, 40], animate: false });
+      } else if (start) {
+        map.setView([start.lat, start.lng], Math.max(map.getZoom(), 12), { animate: false });
+      } else if (highlightedRoad?.length) {
+        const pts = highlightedRoad.flat();
+        if (pts.length) map.fitBounds(L.latLngBounds(pts as L.LatLngTuple[]), { padding: [40, 40], animate: false });
+      }
+      return;
+    }
+
+    // bbox arredondado para 4 casas (~10m) e contagem em bucket de 10%
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (const [a, b] of polyline) {
+      if (a < minLat) minLat = a;
+      if (a > maxLat) maxLat = a;
+      if (b < minLng) minLng = b;
+      if (b > maxLng) maxLng = b;
+    }
+    const r = (n: number) => Math.round(n / 0.0005) * 0.0005;
+    const countBucket = Math.round(polyline.length / Math.max(1, polyline.length * 0.1));
+    const sig = `${r(minLat)},${r(minLng)}|${r(maxLat)},${r(maxLng)}|${countBucket}`;
     if (sig === polylineSignatureRef.current) return;
     polylineSignatureRef.current = sig;
-    if (userInteractedRef.current) return; // usuário já moveu o mapa — não realinha
-    const bounds = L.latLngBounds(polyline.map(([a, b]) => L.latLng(a, b)));
-    mapRef.current.fitBounds(bounds, { padding: [30, 30] });
-  }, [polyline]);
+    map.fitBounds(L.latLngBounds([[minLat, minLng], [maxLat, maxLng]]), { padding: [30, 30], animate: false });
+  }, [polyline, start, end, highlightedRoad]);
 
   // Persiste center/zoom em moveend/zoomend, mas com debounce (250ms) + dedup
   // para evitar escrita excessiva ao arrastar/zoom contínuo. Flush ao desmontar
