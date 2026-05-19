@@ -36,9 +36,11 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImport: (overlay: OverlayFeature) => void;
+  /** Recebe eventos de log do pipeline (lendo/convertendo/desenhando…) p/ exibir no mapa. */
+  onStatus?: (msg: string, level?: "info" | "ok" | "warn" | "error") => void;
 };
 
-export function ImportDialog({ open, onOpenChange, onImport }: Props) {
+export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<ImportedDataset | null>(null);
   const [busy, setBusy] = useState(false);
