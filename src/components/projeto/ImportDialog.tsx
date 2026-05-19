@@ -13,6 +13,7 @@ import {
   parseDxf,
   parseTopoTxt,
   TXT_PRESETS,
+  type DetectionResult,
   type DetectionThresholds,
   type ImportedDataset,
   type TxtFormat,
