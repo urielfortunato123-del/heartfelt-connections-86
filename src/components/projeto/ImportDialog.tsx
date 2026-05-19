@@ -58,6 +58,9 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     }
   }, [open]);
 
+  // Amostra bruta das primeiras linhas do TXT (texto cru, para preview de colunas).
+  const [rawSample, setRawSample] = useState<string[]>([]);
+
   const isDxf = file?.name.toLowerCase().endsWith(".dxf");
   const isTxt =
     file && (file.name.toLowerCase().endsWith(".txt") || file.name.toLowerCase().endsWith(".csv"));
@@ -70,6 +73,53 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     }),
     [presetName, skipHeader, decimal],
   );
+
+  // Lê as primeiras linhas crus do TXT para alimentar o preview de mapeamento.
+  useEffect(() => {
+    if (!file || !isTxt) {
+      setRawSample([]);
+      return;
+    }
+    let cancelled = false;
+    file.text().then((txt) => {
+      if (cancelled) return;
+      const lines = txt
+        .split(/\r?\n/)
+        .slice(skipHeader)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .slice(0, 5);
+      setRawSample(lines);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [file, isTxt, skipHeader]);
+
+  // Mapeia cada linha de amostra nas colunas declaradas pelo preset.
+  const previewRows = useMemo(() => {
+    if (rawSample.length === 0) return [];
+    const first = rawSample[0];
+    const sep =
+      first.includes("\t") ? /\t/
+        : first.includes(";") ? /;/
+        : first.includes(",") ? /,/
+        : /\s+/;
+    return rawSample.map((line) => {
+      const parts = line.split(sep).map((s) => s.trim()).filter(Boolean);
+      const mapped: Record<string, string> = {};
+      txtFormat.order.forEach((key, i) => {
+        if (key === "skip") return;
+        mapped[key] = parts[i] ?? "";
+      });
+      // Junta tudo que sobrou em "D" caso o preset tenha menos colunas que a linha
+      if (parts.length > txtFormat.order.length && txtFormat.order.includes("D")) {
+        const extras = parts.slice(txtFormat.order.length).join(" ");
+        mapped["D"] = `${mapped["D"] ?? ""}${mapped["D"] ? " " : ""}${extras}`.trim();
+      }
+      return mapped;
+    });
+  }, [rawSample, txtFormat]);
 
   // Detecta SRS automaticamente quando há dataset carregado.
   useEffect(() => {
@@ -248,6 +298,64 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
               </div>
             </div>
           )}
+
+          {isTxt && previewRows.length > 0 && (
+            <div className="rounded border border-white/10 bg-black/30 p-2">
+              <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-wider text-white/60">
+                <span>Prévia do mapeamento</span>
+                <span className="font-mono normal-case text-white/40">
+                  {txtFormat.order.filter((k) => k !== "skip").join(" · ")}
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse font-mono text-[11px]">
+                  <thead>
+                    <tr className="text-left text-cyan-300/80">
+                      {txtFormat.order
+                        .filter((k) => k !== "skip")
+                        .map((k, i) => (
+                          <th key={`${k}-${i}`} className="border-b border-white/10 px-2 py-1">
+                            {(
+                              {
+                                P: "P (id)",
+                                N: "N (norte/lat)",
+                                E: "E (leste/lng)",
+                                Z: "Z (cota)",
+                                D: "D (descrição)",
+                              } as Record<string, string>
+                            )[k] ?? k}
+                          </th>
+                        ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewRows.map((row, ri) => (
+                      <tr key={ri} className="text-white/85 odd:bg-white/[0.02]">
+                        {txtFormat.order
+                          .filter((k) => k !== "skip")
+                          .map((k, ci) => (
+                            <td
+                              key={`${ri}-${k}-${ci}`}
+                              className={`border-b border-white/5 px-2 py-1 ${
+                                k === "N" || k === "E" ? "text-emerald-300" : ""
+                              } ${k === "D" ? "text-white/60" : ""}`}
+                            >
+                              {row[k] || <span className="text-white/30">—</span>}
+                            </td>
+                          ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-1 text-[10px] text-white/40">
+                Confira se <b className="text-emerald-300">N</b> (norte) é maior que{" "}
+                <b className="text-emerald-300">E</b> (leste) — caso contrário, troque o preset
+                acima.
+              </p>
+            </div>
+          )}
+
 
           <div className="space-y-1">
             <Label>Sistema de coordenadas (SRC)</Label>
