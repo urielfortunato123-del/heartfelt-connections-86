@@ -318,6 +318,20 @@ export default function RouteMap({
     }
   }, []);
 
+  // Em modo "arrastar overlay", desliga o pan do mapa para que o mouse mova só o overlay.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (draggingOverlayId) {
+      map.dragging.disable();
+      map.getContainer().style.cursor = "grabbing";
+    } else {
+      map.dragging.enable();
+      map.getContainer().style.cursor = "";
+    }
+  }, [draggingOverlayId]);
+
+
   return (
     <div
       ref={containerRef}
