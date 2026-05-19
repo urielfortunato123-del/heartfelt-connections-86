@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import {
   MapContainer,
@@ -53,24 +53,41 @@ function ReadySignal({ onReady }: { onReady?: () => void }) {
   useEffect(() => {
     if (!onReady) return;
     let fired = false;
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
     const fire = () => {
-      if (fired) return;
+      if (fired || cancelled) return;
       fired = true;
-      // aguarda o próximo frame para garantir que o container terminou layout/tiles
-      requestAnimationFrame(() => requestAnimationFrame(() => onReady()));
+      // aguarda dois frames para garantir layout/tiles, sem disparar se desmontou.
+      raf1 = requestAnimationFrame(() => {
+        if (cancelled) return;
+        raf2 = requestAnimationFrame(() => {
+          if (cancelled) return;
+          onReady();
+        });
+      });
     };
     map.whenReady(fire);
     // fallback: se whenReady atrasar, dispara em até 1500ms
     const t = setTimeout(fire, 1500);
-    return () => clearTimeout(t);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      if (raf1) cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
   }, [map, onReady]);
   return null;
 }
 
 
 function ClickCatcher({ onClick }: { onClick: (l: LatLng) => void }) {
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
   useMapEvents({
     click(e) {
+      if (!mountedRef.current) return;
       onClick({ lat: e.latlng.lat, lng: e.latlng.lng });
     },
   });
@@ -96,6 +113,40 @@ export default function RouteMap({
   const VIEW_KEY = "pista.mapView.v1";
   const polylineSignatureRef = useRef<string>("");
   const userInteractedRef = useRef<boolean>(false);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Wrappers que ignoram chamadas tardias do Leaflet após desmontar.
+  const safeOnClick = useCallback(
+    (ll: LatLng) => {
+      if (!mountedRef.current) return;
+      onClick(ll);
+    },
+    [onClick],
+  );
+  const safeOnReady = useCallback(() => {
+    if (!mountedRef.current) return;
+    onReady?.();
+  }, [onReady]);
+  const safeOnMovePoint = useCallback(
+    (id: string, ll: LatLng) => {
+      if (!mountedRef.current) return;
+      onMovePoint?.(id, ll);
+    },
+    [onMovePoint],
+  );
+  const safeOnMovePointEnd = useCallback(
+    (id: string) => {
+      if (!mountedRef.current) return;
+      onMovePointEnd?.(id);
+    },
+    [onMovePointEnd],
+  );
 
   // Restaura view persistida (ou usa start/default) — só leitura inicial, não muda em re-render.
   const initialView = useMemo<{ center: [number, number]; zoom: number }>(() => {
@@ -151,6 +202,22 @@ export default function RouteMap({
     };
   }, []);
 
+  // Cleanup final: remove a instância do Leaflet ao desmontar para liberar
+  // listeners de tiles/eventos e evitar callbacks tardios em estado já desmontado.
+  useEffect(() => {
+    return () => {
+      const map = mapRef.current;
+      if (!map) return;
+      try {
+        map.off();
+        map.remove();
+      } catch {
+        /* ignore */
+      }
+      mapRef.current = null;
+    };
+  }, []);
+
   return (
     <div className="relative h-[480px] w-full overflow-hidden rounded-lg border border-white/10">
       <div className="absolute left-2 top-2 z-[400] rounded bg-black/70 px-3 py-1 text-xs text-white">
@@ -173,8 +240,8 @@ export default function RouteMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <ClickCatcher onClick={onClick} />
-        <ReadySignal onReady={onReady} />
+        <ClickCatcher onClick={safeOnClick} />
+        <ReadySignal onReady={safeOnReady} />
 
 
         {start && (
@@ -218,12 +285,12 @@ export default function RouteMap({
                   ? {
                       drag: (e) => {
                         const ll = (e.target as L.Marker).getLatLng();
-                        onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                        safeOnMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
                       },
                       dragend: (e) => {
                         const ll = (e.target as L.Marker).getLatLng();
-                        onMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
-                        onMovePointEnd?.(p.id);
+                        safeOnMovePoint(p.id, { lat: ll.lat, lng: ll.lng });
+                        safeOnMovePointEnd(p.id);
                       },
                     }
                   : undefined
