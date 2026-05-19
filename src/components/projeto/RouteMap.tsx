@@ -326,7 +326,7 @@ export default function RouteMap({
   const resetView = useCallback(() => {
     const map = mapRef.current;
     try {
-      window.localStorage.removeItem(VIEW_KEY);
+      window.localStorage.removeItem(storageKeyRef.current);
     } catch {
       /* ignore */
     }
