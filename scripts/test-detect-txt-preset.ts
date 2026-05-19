@@ -9,7 +9,7 @@
 // Rode com:  bun scripts/test-detect-txt-preset.ts
 //        ou: npm run test:detect-txt
 
-import { detectTxtPreset, TXT_PRESETS } from "../src/lib/projeto/importers";
+import { detectTxtPreset, detectTxtPresetVerbose, TXT_PRESETS } from "../src/lib/projeto/importers";
 
 const RED = "\x1b[31m";
 const GREEN = "\x1b[32m";
@@ -117,20 +117,24 @@ const cases: Case[] = [
     expect: null,
   },
   {
+    // Empate técnico real: metade das linhas têm N>E em UTM Sul plausível e a outra
+    // metade tem E>N também em UTM Sul plausível — ambos os lados passariam no
+    // column-check, então o voto a/b decide e empata → null.
     name: "empate técnico PNEZD vs PENZD → null",
     content:
-      // 3 linhas N>E + 3 linhas E>N — ratio = 50%, abaixo do limiar
       rows("{i}{sep}7500000{dec}0{sep}250000{dec}0{sep}680{dec}0{sep}A", 3, ",", ".") +
       "\n" +
       rows("{i}{sep}250000{dec}0{sep}7500000{dec}0{sep}680{dec}0{sep}A", 3, ",", "."),
     expect: null,
   },
   {
-    name: "margem insuficiente (4 vs 2) → null (75% ratio mas margem<3)",
+    // Mesma configuração mas com valores arbitrários — o vencedor base ainda
+    // fica em "low" e o column-check NÃO promove (faixa não-UTM/local).
+    name: "margem baixa + valores locais arbitrários → null",
     content:
-      rows("{i}{sep}7500000{dec}0{sep}250000{dec}0{sep}680{dec}0{sep}A", 4, ",", ".") +
+      rows("{i}{sep}999{dec}0{sep}11{dec}0{sep}5{dec}0{sep}A", 4, ",", ".") +
       "\n" +
-      rows("{i}{sep}250000{dec}0{sep}7500000{dec}0{sep}680{dec}0{sep}A", 2, ",", "."),
+      rows("{i}{sep}11{dec}0{sep}999{dec}0{sep}5{dec}0{sep}A", 2, ",", "."),
     expect: null,
   },
 ];
@@ -150,6 +154,35 @@ const run = async () => {
       fail(`${c.name} — throw: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+
+  // === 2ª heurística: column-check ===
+  const utmFile = mkFile(
+    "utm.txt",
+    rows("{i}{sep}7534256{dec}12{sep}253871{dec}45{sep}680{dec}5{sep}EIXO", 6, ",", "."),
+  );
+  const utmDet = await detectTxtPresetVerbose(utmFile, ".", 0);
+  if (utmDet?.columnCheck?.rangeLabel.startsWith("UTM Sul")) {
+    pass(`column-check rotula UTM Sul ${DIM}→ ${utmDet.columnCheck.rangeLabel}${RESET}`);
+  } else {
+    fail(`column-check deveria rotular UTM Sul, obteve: ${utmDet?.columnCheck?.rangeLabel}`);
+  }
+  if (utmDet?.columnCheck && utmDet.columnCheck.nInRange === utmDet.columnCheck.sampled) {
+    pass(`column-check: 100% das amostras dentro da faixa N`);
+  } else {
+    fail(`column-check N: ${utmDet?.columnCheck?.nInRange}/${utmDet?.columnCheck?.sampled}`);
+  }
+
+  const localFile = mkFile(
+    "local.txt",
+    rows("{i}{sep}245{dec}1{sep}141{dec}2{sep}5{dec}0{sep}A", 6, ",", "."),
+  );
+  const localDet = await detectTxtPresetVerbose(localFile, ".", 0);
+  if (localDet?.columnCheck?.rangeLabel.includes("sem promoção")) {
+    pass(`column-check em sistema local não promove ${DIM}→ ${localDet.columnCheck.rangeLabel}${RESET}`);
+  } else {
+    fail(`column-check local deveria marcar "sem promoção", obteve: ${localDet?.columnCheck?.rangeLabel}`);
+  }
+
 
   console.log(
     failed === 0

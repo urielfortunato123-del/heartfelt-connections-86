@@ -249,6 +249,22 @@ export async function detectDecimalSeparator(
   return { decimal, confidence, stats: { sampled, comma, dot } };
 }
 
+export type ColumnCheck = {
+  /** Faixa esperada usada para validar (humana). */
+  rangeLabel: string;
+  /** Amostras avaliadas no check. */
+  sampled: number;
+  /** Quantos N caíram dentro da faixa esperada. */
+  nInRange: number;
+  /** Quantos E caíram dentro da faixa esperada. */
+  eInRange: number;
+  /** Coeficiente de dispersão (max/min) — útil para detectar mistura de sistemas. */
+  nSpread: number;
+  eSpread: number;
+  /** True se o check elevou a confiança de "low" → "high". */
+  promoted: boolean;
+};
+
 export type DetectionResult = {
   preset: keyof typeof TXT_PRESETS;
   /** "high" só quando vence com folga (≥75% e ≥3 votos de margem). "low" caso contrário. */
@@ -264,6 +280,8 @@ export type DetectionResult = {
     bGtA_noid: number;
     latLngHits: number;
   };
+  /** 2ª heurística: consistência por coluna ao longo das linhas. */
+  columnCheck?: ColumnCheck;
 };
 
 export type DetectionThresholds = {
@@ -287,6 +305,67 @@ function classify(winner: number, loser: number, t: DetectionThresholds): "high"
   if (winner / total < t.ratio) return "low";
   if (winner - loser < t.margin) return "low";
   return "high";
+}
+
+/**
+ * 2ª heurística: dado o preset escolhido e os valores das colunas N/E
+ * ao longo das amostras, verifica se ambos ficam dentro de faixas
+ * plausíveis (lat/lng, UTM Sul ou sistema local consistente).
+ *
+ * Promove "low" → "high" quando ≥90% das amostras passam no check.
+ */
+function checkColumns(
+  preset: keyof typeof TXT_PRESETS,
+  nVals: number[],
+  eVals: number[],
+  baseConfidence: "high" | "low",
+  t: DetectionThresholds,
+): ColumnCheck {
+  const sampled = Math.min(nVals.length, eVals.length);
+  let rangeLabel = "—";
+  let nInRange = 0;
+  let eInRange = 0;
+
+  if (preset === "Lat,Lng,Z (GNSS)") {
+    rangeLabel = "lat ∈ [-90, 90] · lng ∈ [-180, 180]";
+    for (let i = 0; i < sampled; i++) {
+      if (Math.abs(nVals[i]) <= 90) nInRange++;
+      if (Math.abs(eVals[i]) <= 180) eInRange++;
+    }
+  } else {
+    // Decide entre "UTM Sul" e "sistema local" pela ordem de grandeza típica.
+    const looksUtm =
+      sampled > 0 &&
+      nVals.every((v) => v > 0 && v < 1e7) &&
+      eVals.every((v) => v > 1e5 && v < 1e6) &&
+      nVals.some((v) => v > 1e6);
+    if (looksUtm) {
+      rangeLabel = "UTM Sul: N ∈ [1·10⁶, 1·10⁷] · E ∈ [1·10⁵, 1·10⁶]";
+      for (let i = 0; i < sampled; i++) {
+        if (nVals[i] > 1e6 && nVals[i] < 1e7) nInRange++;
+        if (eVals[i] > 1e5 && eVals[i] < 1e6) eInRange++;
+      }
+    } else {
+      // Sistema local: NÃO promove confiança aqui. Faixas locais são fracas demais
+      // para sobrescrever a votação base — apenas reportamos a dispersão.
+      rangeLabel = "sistema local (faixa não-UTM) — sem promoção";
+    }
+  }
+
+  const nMinAll = Math.min(...nVals.map(Math.abs).filter((v) => v > 0));
+  const nMaxAll = Math.max(...nVals.map(Math.abs));
+  const eMinAll = Math.min(...eVals.map(Math.abs).filter((v) => v > 0));
+  const eMaxAll = Math.max(...eVals.map(Math.abs));
+  const nSpread = isFinite(nMinAll) && nMinAll > 0 ? nMaxAll / nMinAll : Infinity;
+  const eSpread = isFinite(eMinAll) && eMinAll > 0 ? eMaxAll / eMinAll : Infinity;
+
+  const passes =
+    sampled >= t.minSamples &&
+    nInRange / sampled >= 0.9 &&
+    eInRange / sampled >= 0.9;
+  const promoted = baseConfidence === "low" && passes;
+
+  return { rangeLabel, sampled, nInRange, eInRange, nSpread, eSpread, promoted };
 }
 
 /**
@@ -319,6 +398,8 @@ export async function detectTxtPresetVerbose(
   let bGtA_noid = 0;
   let latLngHits = 0;
   let sampled = 0;
+  /** Guarda (a, b, hasId) por linha amostrada para o check de coluna posterior. */
+  const rows: Array<{ a: number; b: number; hasId: boolean }> = [];
 
   for (const raw of lines.slice(0, 20)) {
     const parts = raw.split(re).map((s) => s.trim()).filter(Boolean);
@@ -334,12 +415,14 @@ export async function detectTxtPresetVerbose(
     if (idLike && Number.isFinite(n1) && Number.isFinite(n2) && Number.isFinite(n3)) {
       withId++;
       sampled++;
+      rows.push({ a: n1, b: n2, hasId: true });
       if (Math.abs(n1) <= 90 && Math.abs(n2) <= 180) latLngHits++;
       if (n1 > n2) aGtB_id++;
       else if (n2 > n1) bGtA_id++;
     } else if (!idLike && Number.isFinite(n0) && Number.isFinite(n1)) {
       withoutId++;
       sampled++;
+      rows.push({ a: n0, b: n1, hasId: false });
       if (Math.abs(n0) <= 90 && Math.abs(n1) <= 180) latLngHits++;
       if (n0 > n1) aGtB_noid++;
       else if (n1 > n0) bGtA_noid++;
@@ -349,12 +432,37 @@ export async function detectTxtPresetVerbose(
   const stats = { sampled, withId, withoutId, aGtB_id, bGtA_id, aGtB_noid, bGtA_noid, latLngHits };
   if (sampled === 0) return null;
 
+  /** Aplica o check de coluna no preset escolhido e, se promover, sobe a confiança. */
+  const finalize = (
+    preset: keyof typeof TXT_PRESETS,
+    baseConfidence: "high" | "low",
+  ): DetectionResult => {
+    // Decide qual posição é N e qual é E neste preset.
+    const order = TXT_PRESETS[preset].order;
+    const nIdx = order.indexOf("N");
+    const eIdx = order.indexOf("E");
+    const nVals: number[] = [];
+    const eVals: number[] = [];
+    for (const r of rows) {
+      // Em rows, a = 1ª coord (índice 1 com ID, índice 0 sem); b = 2ª coord.
+      const aIdx = r.hasId ? 1 : 0;
+      const bIdx = r.hasId ? 2 : 1;
+      const nv = nIdx === aIdx ? r.a : nIdx === bIdx ? r.b : NaN;
+      const ev = eIdx === aIdx ? r.a : eIdx === bIdx ? r.b : NaN;
+      if (Number.isFinite(nv)) nVals.push(nv);
+      if (Number.isFinite(ev)) eVals.push(ev);
+    }
+    const columnCheck = checkColumns(preset, nVals, eVals, baseConfidence, thresholds);
+    const confidence = columnCheck.promoted ? "high" : baseConfidence;
+    return { preset, confidence, stats, columnCheck };
+  };
+
   // Lat/Lng só é alta-confiança se quase todas as amostras cabem nas faixas E há amostras suficientes.
   if (sampled >= thresholds.minSamples && latLngHits / sampled >= 0.9) {
-    return { preset: "Lat,Lng,Z (GNSS)", confidence: "high", stats };
+    return finalize("Lat,Lng,Z (GNSS)", "high");
   }
   if (latLngHits / sampled >= 0.8) {
-    return { preset: "Lat,Lng,Z (GNSS)", confidence: "low", stats };
+    return finalize("Lat,Lng,Z (GNSS)", "low");
   }
 
   if (withId >= withoutId && withId > 0) {
@@ -362,11 +470,10 @@ export async function detectTxtPresetVerbose(
     const winner = aWin ? aGtB_id : bGtA_id;
     const loser = aWin ? bGtA_id : aGtB_id;
     if (winner === 0) return null;
-    return {
-      preset: aWin ? "PNEZD (P,N,E,Z,D)" : "PENZD (P,E,N,Z,D)",
-      confidence: classify(winner, loser, thresholds),
-      stats,
-    };
+    return finalize(
+      aWin ? "PNEZD (P,N,E,Z,D)" : "PENZD (P,E,N,Z,D)",
+      classify(winner, loser, thresholds),
+    );
   }
 
   if (withoutId > 0) {
@@ -374,11 +481,10 @@ export async function detectTxtPresetVerbose(
     const winner = aWin ? aGtB_noid : bGtA_noid;
     const loser = aWin ? bGtA_noid : aGtB_noid;
     if (winner === 0) return null;
-    return {
-      preset: aWin ? "NEZ (N,E,Z)" : "ENZ (E,N,Z)",
-      confidence: classify(winner, loser, thresholds),
-      stats,
-    };
+    return finalize(
+      aWin ? "NEZ (N,E,Z)" : "ENZ (E,N,Z)",
+      classify(winner, loser, thresholds),
+    );
   }
 
   return null;
