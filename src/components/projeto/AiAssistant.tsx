@@ -374,6 +374,7 @@ export function AiAssistant({ context }: { context: AiContext }) {
               )}
             >
               <Settings className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
