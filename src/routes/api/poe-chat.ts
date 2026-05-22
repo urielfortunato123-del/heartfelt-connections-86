@@ -10,6 +10,7 @@ const BodySchema = z.object({
   messages: z.array(MessageSchema).min(1).max(40),
   model: z.string().min(1).max(80).optional(),
   context: z.string().max(8000).optional(),
+  systemPrompt: z.string().min(1).max(8000).optional(),
 });
 
 const SYSTEM_PROMPT = `Você é um assistente especialista em engenharia rodoviária e GIS,
@@ -47,9 +48,10 @@ export const Route = createFileRoute("/api/poe-chat")({
           );
         }
 
+        const baseSystem = parsed.systemPrompt?.trim() || SYSTEM_PROMPT;
         const systemContent = parsed.context
-          ? `${SYSTEM_PROMPT}\n\n## Contexto do projeto atual\n${parsed.context}`
-          : SYSTEM_PROMPT;
+          ? `${baseSystem}\n\n## Contexto do projeto atual\n${parsed.context}`
+          : baseSystem;
 
         const upstream = await fetch("https://api.poe.com/v1/chat/completions", {
           method: "POST",
