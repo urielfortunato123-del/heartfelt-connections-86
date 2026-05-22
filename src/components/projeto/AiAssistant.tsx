@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Check, Copy, FileDown, Loader2, Send, Sparkles, X } from "lucide-react";
+import {
+  Bot,
+  Check,
+  Copy,
+  FileDown,
+  Loader2,
+  Plus,
+  RotateCcw,
+  Send,
+  Settings,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
@@ -25,12 +38,50 @@ const MODELS = [
   { id: "Claude-Opus-4.1", label: "Claude Opus 4.1" },
 ] as const;
 
-const QUICK_PROMPTS = [
+const DEFAULT_QUICK_PROMPTS = [
   "Qual SRS devo usar para um traçado em São Paulo?",
   "Como converter coordenadas UTM 23S para WGS84?",
   "Sugira o sentido de estaqueamento para esta rodovia",
   "Explique a diferença entre km, hectômetro e estaca",
 ];
+
+const DEFAULT_SYSTEM_PROMPT = `Você é um assistente especialista em engenharia rodoviária e GIS,
+integrado ao software KM/Converter Pro. Ajude o usuário com:
+- Interpretação de arquivos DXF/TXT/KML/Shapefile
+- Detecção e conversão de sistemas de coordenadas (SIRGAS 2000, UTM, WGS84)
+- Sugestões de estaqueamento, sentido de rodovia e marcos quilométricos
+- Padrões DER-SP, DNIT e concessionárias
+- Cálculos de quilometragem, hectômetros, estacas
+
+Responda em português brasileiro, de forma técnica, objetiva e profissional.
+Use markdown quando útil (listas, tabelas, blocos de código).`;
+
+const SETTINGS_KEY = "kmconv:ai-assistant-settings";
+
+type AssistantSettings = {
+  systemPrompt: string;
+  quickPrompts: string[];
+};
+
+function loadSettings(): AssistantSettings {
+  if (typeof window === "undefined") {
+    return { systemPrompt: "", quickPrompts: DEFAULT_QUICK_PROMPTS };
+  }
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { systemPrompt: "", quickPrompts: DEFAULT_QUICK_PROMPTS };
+    const parsed = JSON.parse(raw) as Partial<AssistantSettings>;
+    return {
+      systemPrompt: typeof parsed.systemPrompt === "string" ? parsed.systemPrompt : "",
+      quickPrompts:
+        Array.isArray(parsed.quickPrompts) && parsed.quickPrompts.length > 0
+          ? parsed.quickPrompts.filter((p): p is string => typeof p === "string")
+          : DEFAULT_QUICK_PROMPTS,
+    };
+  } catch {
+    return { systemPrompt: "", quickPrompts: DEFAULT_QUICK_PROMPTS };
+  }
+}
 
 export function AiAssistant({ context }: { context: AiContext }) {
   const [open, setOpen] = useState(false);
