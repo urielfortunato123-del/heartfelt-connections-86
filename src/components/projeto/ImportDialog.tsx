@@ -19,8 +19,8 @@ import {
   type ImportedDataset,
   type TxtFormat,
 } from "@/lib/projeto/importers";
-import { LOCAL_SRS, SRS_OPTIONS, detectBestSrs, looksLikeLatLng, looksLikeUTM, toLatLng, validateSrsBbox, type SrsCandidate } from "@/lib/projeto/srs";
-import { Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
+import { LOCAL_SRS, SRS_OPTIONS, detectBestSrs, looksLikeLatLng, looksLikeUTM, rankSrsCandidates, toLatLng, validateSrsBbox, type SrsCandidate } from "@/lib/projeto/srs";
+import { ChevronDown, ChevronUp, Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 /**
