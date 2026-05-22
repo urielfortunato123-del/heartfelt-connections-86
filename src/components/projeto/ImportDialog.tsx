@@ -772,7 +772,16 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     setDetection(null);
     setDecimalInfo(null);
     if (!f) return;
+    // Restaura SRC salvo para este arquivo (ou, em fallback, para este preset).
+    const pref = loadSrsPref(f.name, presetName);
+    if (pref) {
+      restoredSrsRef.current = true;
+      setSrs(pref.code);
+      const origem = pref.source === "file" ? `arquivo "${f.name}"` : `preset "${presetName}"`;
+      log(`SRC restaurado de preferência salva (${origem}): ${pref.code}.`, "ok");
+    }
     setProgress({ value: 5, label: `Preparando "${f.name}"…` });
+
     const isTxtFile = f.name.toLowerCase().endsWith(".txt") || f.name.toLowerCase().endsWith(".csv");
     if (isTxtFile) {
       // 1) Detecta o separador decimal (vírgula vs ponto) antes de qualquer parse,
