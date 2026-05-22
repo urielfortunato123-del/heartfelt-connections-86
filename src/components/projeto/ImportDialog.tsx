@@ -23,6 +23,59 @@ import { LOCAL_SRS, SRS_OPTIONS, detectBestSrs, looksLikeLatLng, looksLikeUTM, r
 import { ChevronDown, ChevronUp, Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+// ---------------------------------------------------------------------------
+// Persistência de SRC por arquivo/preset (reduz retrabalho em reimportações)
+// ---------------------------------------------------------------------------
+const SRS_BY_FILE_KEY = "import.srsByFile";
+const SRS_BY_PRESET_KEY = "import.srsByPreset";
+
+function readMap(key: string): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    return obj && typeof obj === "object" ? (obj as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+function writeMap(key: string, map: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+function fileKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+/** Recupera SRC salvo: prioriza match por nome de arquivo; senão por preset. */
+function loadSrsPref(fileName: string | null, presetName: string): {
+  code: string;
+  source: "file" | "preset";
+} | null {
+  if (fileName) {
+    const byFile = readMap(SRS_BY_FILE_KEY)[fileKey(fileName)];
+    if (byFile) return { code: byFile, source: "file" };
+  }
+  const byPreset = readMap(SRS_BY_PRESET_KEY)[presetName];
+  if (byPreset) return { code: byPreset, source: "preset" };
+  return null;
+}
+function saveSrsPref(fileName: string | null, presetName: string, code: string) {
+  if (fileName) {
+    const m = readMap(SRS_BY_FILE_KEY);
+    m[fileKey(fileName)] = code;
+    writeMap(SRS_BY_FILE_KEY, m);
+  }
+  const mp = readMap(SRS_BY_PRESET_KEY);
+  mp[presetName] = code;
+  writeMap(SRS_BY_PRESET_KEY, mp);
+}
+
+
 /**
  * Calcula bbox lat/lng após reprojetar para WGS84 e lista pontos/segmentos
  * que ficaram fora do globo (lat ∉ [-90,90] ou lng ∉ [-180,180] ou NaN).
