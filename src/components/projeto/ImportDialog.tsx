@@ -1541,6 +1541,16 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                     </div>
                   </div>
                 )}
+                {parsed.bbox && (
+                  <SrsCandidatesTable
+                    bbox={parsed.bbox}
+                    selectedCode={srs}
+                    onSelect={(code) => {
+                      setSrs(code);
+                      toast.success(`SRC aplicado: ${code}`);
+                    }}
+                  />
+                )}
               </div>
             );
           })()}
