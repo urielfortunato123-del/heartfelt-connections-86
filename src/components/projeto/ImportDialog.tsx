@@ -1607,9 +1607,41 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                     size="sm"
                     className="h-7 text-xs"
                     onClick={() => {
-                      setSrs(srsSuggestion.code);
-                      toast.success(`SRC aplicado: ${srsSuggestion.code}`);
-                      log(`SRC aplicado manualmente via sugestão: ${srsSuggestion.code}.`, "ok");
+                      const code = srsSuggestion.code;
+                      setSrs(code);
+                      // Recalcula bbox lat/lng e contagem de inválidos imediatamente
+                      const stats = parsed?.bbox ? computeCandidateForSrs(code, parsed.bbox) : null;
+                      let invalidCount = 0;
+                      if (parsed) {
+                        const isBad = (lat: number, lng: number) =>
+                          !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180;
+                        try {
+                          parsed.points.forEach((p) => {
+                            const ll = toLatLng(code, p.x, p.y);
+                            if (isBad(ll.lat, ll.lng)) invalidCount++;
+                          });
+                          parsed.polylines.forEach((pl) => {
+                            pl.coords.forEach((v) => {
+                              const ll = toLatLng(code, v.x, v.y);
+                              if (isBad(ll.lat, ll.lng)) invalidCount++;
+                            });
+                          });
+                        } catch {
+                          // ignorado — LatLngPreview mostra o erro
+                        }
+                      }
+                      toast.success(
+                        `SRC aplicado: ${code}` +
+                          (invalidCount > 0 ? ` · ${invalidCount} fora do globo` : " · todos dentro do globo"),
+                      );
+                      if (stats) {
+                        log(
+                          `SRC aplicado via sugestão: ${code}. Bbox Lat [${stats.bbox.minLat.toFixed(4)} → ${stats.bbox.maxLat.toFixed(4)}] · Lng [${stats.bbox.minLng.toFixed(4)} → ${stats.bbox.maxLng.toFixed(4)}] · inválidos=${invalidCount}.`,
+                          invalidCount > 0 ? "warn" : "ok",
+                        );
+                      } else {
+                        log(`SRC aplicado via sugestão: ${code}. Inválidos=${invalidCount}.`, "ok");
+                      }
                     }}
                   >
                     Aplicar e reprojetar
