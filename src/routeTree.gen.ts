@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProjetoRouteImport } from './routes/projeto'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPoeChatRouteImport } from './routes/api/poe-chat'
 
 const ProjetoRoute = ProjetoRouteImport.update({
   id: '/projeto',
@@ -22,31 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPoeChatRoute = ApiPoeChatRouteImport.update({
+  id: '/api/poe-chat',
+  path: '/api/poe-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projeto': typeof ProjetoRoute
+  '/api/poe-chat': typeof ApiPoeChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/projeto': typeof ProjetoRoute
+  '/api/poe-chat': typeof ApiPoeChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/projeto': typeof ProjetoRoute
+  '/api/poe-chat': typeof ApiPoeChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/projeto'
+  fullPaths: '/' | '/projeto' | '/api/poe-chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projeto'
-  id: '__root__' | '/' | '/projeto'
+  to: '/' | '/projeto' | '/api/poe-chat'
+  id: '__root__' | '/' | '/projeto' | '/api/poe-chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjetoRoute: typeof ProjetoRoute
+  ApiPoeChatRoute: typeof ApiPoeChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/poe-chat': {
+      id: '/api/poe-chat'
+      path: '/api/poe-chat'
+      fullPath: '/api/poe-chat'
+      preLoaderRoute: typeof ApiPoeChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjetoRoute: ProjetoRoute,
+  ApiPoeChatRoute: ApiPoeChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
