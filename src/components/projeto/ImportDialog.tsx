@@ -691,6 +691,13 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     if (lastAutoFor.current === key) return;
     lastAutoFor.current = key;
 
+    // Se já restauramos um SRC salvo para este arquivo/preset, não sobrescreve.
+    if (restoredSrsRef.current) {
+      restoredSrsRef.current = false;
+      return;
+    }
+
+
     if (srsSuggestion && srsSuggestion.code !== srs) {
       setSrs(srsSuggestion.code);
       log(
