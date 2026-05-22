@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Bot, Check, Copy, FileDown, Loader2, Send, Sparkles, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
