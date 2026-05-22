@@ -1469,6 +1469,14 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                   Lat [{srsSuggestion.bbox.minLat.toFixed(4)} → {srsSuggestion.bbox.maxLat.toFixed(4)}] ·
                   Lng [{srsSuggestion.bbox.minLng.toFixed(4)} → {srsSuggestion.bbox.maxLng.toFixed(4)}]
                 </div>
+                {parsed && (
+                  <div className="mt-2">
+                    <div className="text-[10px] uppercase tracking-wider text-cyan-200/60">
+                      Pré-visualização da reprojeção para {srsSuggestion.code}
+                    </div>
+                    <LatLngPreview parsed={parsed} srs={srsSuggestion.code} />
+                  </div>
+                )}
                 <div className="mt-2 flex gap-2">
                   <Button
                     size="sm"
