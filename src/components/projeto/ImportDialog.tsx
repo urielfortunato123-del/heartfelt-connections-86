@@ -676,6 +676,11 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     return detectBestSrs(parsed.bbox);
   }, [parsed]);
 
+  const selectedCandidate = useMemo<SrsCandidate | null>(() => {
+    if (!parsed?.bbox) return null;
+    return computeCandidateForSrs(srs, parsed.bbox);
+  }, [parsed, srs]);
+
   // Detecta SRS automaticamente quando há dataset carregado.
   // Estratégia: usa rankSrsCandidates (reprojeta bbox e checa se cai no Brasil)
   // e sugere o melhor; cai para heurística simples quando nada bate.
