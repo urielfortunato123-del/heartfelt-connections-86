@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Bot, Check, Copy, FileDown, Loader2, Send, Sparkles, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -153,6 +154,100 @@ export function AiAssistant({ context }: { context: AiContext }) {
     [contextString, loading, messages, model],
   );
 
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  const copyMessage = useCallback(async (index: number, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedIndex(index);
+      window.setTimeout(() => setCopiedIndex((c) => (c === index ? null : c)), 1500);
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  }, []);
+
+  const exportPdf = useCallback(async () => {
+    if (messages.length === 0) {
+      toast.info("Nenhuma conversa para exportar");
+      return;
+    }
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      const maxW = pageW - margin * 2;
+      let y = margin;
+
+      const ensureSpace = (h: number) => {
+        if (y + h > pageH - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      };
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("Assistente IA — KM/Converter Pro", margin, y);
+      y += 6;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(new Date().toLocaleString("pt-BR"), margin, y);
+      y += 4;
+      if (context.projectName) {
+        doc.text(`Projeto: ${context.projectName}`, margin, y);
+        y += 4;
+      }
+      if (contextString) {
+        const ctxLines = doc.splitTextToSize(contextString, maxW) as string[];
+        ensureSpace(ctxLines.length * 4 + 2);
+        doc.text(ctxLines, margin, y);
+        y += ctxLines.length * 4 + 2;
+      }
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageW - margin, y);
+      y += 6;
+      doc.setTextColor(0);
+
+      for (const m of messages) {
+        const label = m.role === "user" ? "Você" : "Assistente";
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        if (m.role === "user") doc.setTextColor(30, 100, 160);
+        else doc.setTextColor(80, 40, 160);
+        ensureSpace(6);
+        doc.text(label, margin, y);
+        y += 5;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(20);
+        const lines = doc.splitTextToSize(m.content || "(vazio)", maxW) as string[];
+        for (const line of lines) {
+          ensureSpace(5);
+          doc.text(line, margin, y);
+          y += 5;
+        }
+        y += 3;
+      }
+
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const slug = (context.projectName || "chat")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      doc.save(`assistente-${slug || "chat"}-${stamp}.pdf`);
+      toast.success("PDF exportado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao exportar PDF");
+    }
+  }, [context.projectName, contextString, messages]);
+
+
   return (
     <>
       {!open && (
@@ -196,6 +291,16 @@ export function AiAssistant({ context }: { context: AiContext }) {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => void exportPdf()}
+              aria-label="Exportar conversa em PDF"
+              title="Exportar PDF"
+              disabled={messages.length === 0}
+              className="rounded-md p-1 text-white/60 hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white/60"
+            >
+              <FileDown className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -253,6 +358,27 @@ export function AiAssistant({ context }: { context: AiContext }) {
               <div className="prose prose-invert prose-sm max-w-none prose-pre:bg-slate-900/80 prose-pre:text-xs prose-code:text-cyan-300">
                 <ReactMarkdown>{m.content}</ReactMarkdown>
               </div>
+              {m.role === "assistant" && m.content && (
+                <div className="mt-1.5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void copyMessage(i, m.content)}
+                    aria-label="Copiar resposta"
+                    title="Copiar"
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-white/40 transition hover:bg-white/5 hover:text-white/80"
+                  >
+                    {copiedIndex === i ? (
+                      <>
+                        <Check className="h-3 w-3" /> Copiado
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" /> Copiar
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
 
