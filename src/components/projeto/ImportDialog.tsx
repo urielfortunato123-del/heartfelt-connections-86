@@ -19,8 +19,8 @@ import {
   type ImportedDataset,
   type TxtFormat,
 } from "@/lib/projeto/importers";
-import { LOCAL_SRS, SRS_OPTIONS, detectBestSrs, looksLikeLatLng, looksLikeUTM, toLatLng, validateSrsBbox, type SrsCandidate } from "@/lib/projeto/srs";
-import { Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
+import { LOCAL_SRS, SRS_OPTIONS, detectBestSrs, looksLikeLatLng, looksLikeUTM, rankSrsCandidates, toLatLng, validateSrsBbox, type SrsCandidate } from "@/lib/projeto/srs";
+import { ChevronDown, ChevronUp, Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 /**
@@ -148,6 +148,100 @@ function LatLngPreview({ parsed, srs }: { parsed: ImportedDataset; srs: string }
             Dica: troque o SRC ou use "Sistema local" — ao confirmar, faço esse fallback
             automaticamente se necessário.
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Tabela expandível com todos os SRCs candidatos, mostrando score,
+ * motivo e faixa lat/lng estimada. Permite selecionar qualquer candidato.
+ */
+function SrsCandidatesTable({
+  bbox,
+  selectedCode,
+  onSelect,
+}: {
+  bbox: { minX: number; minY: number; maxX: number; maxY: number };
+  selectedCode: string;
+  onSelect: (code: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const candidates = useMemo(() => rankSrsCandidates(bbox), [bbox]);
+
+  if (candidates.length === 0) return null;
+
+  return (
+    <div className="mt-2 rounded border border-white/10 bg-black/30">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center justify-between px-3 py-2 text-xs text-white/70 hover:text-white"
+      >
+        <span>
+          Ver todos os SRCs candidatos <span className="text-white/40">({candidates.length})</span>
+        </span>
+        {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </button>
+      {expanded && (
+        <div className="overflow-x-auto px-3 pb-3">
+          <table className="w-full text-left text-[11px]">
+            <thead>
+              <tr className="text-white/40">
+                <th className="border-b border-white/10 py-1 pr-2">#</th>
+                <th className="border-b border-white/10 py-1 pr-2">SRC</th>
+                <th className="border-b border-white/10 py-1 pr-2">Score</th>
+                <th className="border-b border-white/10 py-1 pr-2">Motivo</th>
+                <th className="border-b border-white/10 py-1 pr-2">Lat</th>
+                <th className="border-b border-white/10 py-1 pr-2">Lng</th>
+                <th className="border-b border-white/10 py-1"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {candidates.map((c, i) => {
+                const isSelected = c.code === selectedCode;
+                const rankColor =
+                  i === 1 ? "text-amber-300" : i === 2 ? "text-white/70" : "text-white/50";
+                return (
+                  <tr
+                    key={c.code}
+                    className={`${isSelected ? "bg-cyan-400/10" : ""} hover:bg-white/[0.03]`}
+                  >
+                    <td className={`border-b border-white/5 py-1 pr-2 font-mono ${i === 0 ? "text-cyan-300" : rankColor}`}>
+                      {i + 1}
+                    </td>
+                    <td className="border-b border-white/5 py-1 pr-2 font-mono text-white/90">
+                      {c.code}
+                    </td>
+                    <td className="border-b border-white/5 py-1 pr-2 font-mono text-white/80">
+                      {c.score}
+                    </td>
+                    <td className="border-b border-white/5 py-1 pr-2 text-white/70">
+                      {c.reason}
+                    </td>
+                    <td className="border-b border-white/5 py-1 pr-2 font-mono text-emerald-300/80">
+                      [{c.bbox.minLat.toFixed(4)} → {c.bbox.maxLat.toFixed(4)}]
+                    </td>
+                    <td className="border-b border-white/5 py-1 pr-2 font-mono text-emerald-300/80">
+                      [{c.bbox.minLng.toFixed(4)} → {c.bbox.maxLng.toFixed(4)}]
+                    </td>
+                    <td className="border-b border-white/5 py-1">
+                      <Button
+                        size="sm"
+                        variant={isSelected ? "secondary" : "ghost"}
+                        className="h-5 px-2 text-[10px]"
+                        disabled={isSelected}
+                        onClick={() => onSelect(c.code)}
+                      >
+                        {isSelected ? "Ativo" : "Usar"}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -1446,6 +1540,16 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                       </Button>
                     </div>
                   </div>
+                )}
+                {parsed.bbox && (
+                  <SrsCandidatesTable
+                    bbox={parsed.bbox}
+                    selectedCode={srs}
+                    onSelect={(code) => {
+                      setSrs(code);
+                      toast.success(`SRC aplicado: ${code}`);
+                    }}
+                  />
                 )}
               </div>
             );
