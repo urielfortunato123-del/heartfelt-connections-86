@@ -19,7 +19,7 @@ import {
   type ImportedDataset,
   type TxtFormat,
 } from "@/lib/projeto/importers";
-import { LOCAL_SRS, SRS_OPTIONS, detectBestSrs, looksLikeLatLng, looksLikeUTM, rankSrsCandidates, toLatLng, validateSrsBbox, type SrsCandidate } from "@/lib/projeto/srs";
+import { computeCandidateForSrs, LOCAL_SRS, SRS_OPTIONS, detectBestSrs, looksLikeLatLng, looksLikeUTM, rankSrsCandidates, toLatLng, validateSrsBbox, type SrsCandidate } from "@/lib/projeto/srs";
 import { ChevronDown, ChevronUp, Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -221,7 +221,18 @@ function SrsCandidatesTable({
   onSelect: (code: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const candidates = useMemo(() => rankSrsCandidates(bbox), [bbox]);
+  const candidates = useMemo(() => {
+    const list = rankSrsCandidates(bbox);
+    const already = list.some((c) => c.code === selectedCode);
+    if (!already) {
+      const extra = computeCandidateForSrs(selectedCode, bbox);
+      if (extra) {
+        list.push(extra);
+        list.sort((a, b) => b.score - a.score);
+      }
+    }
+    return list;
+  }, [bbox, selectedCode]);
 
   if (candidates.length === 0) return null;
 
@@ -675,6 +686,11 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     if (!parsed?.bbox) return null;
     return detectBestSrs(parsed.bbox);
   }, [parsed]);
+
+  const selectedCandidate = useMemo<SrsCandidate | null>(() => {
+    if (!parsed?.bbox) return null;
+    return computeCandidateForSrs(srs, parsed.bbox);
+  }, [parsed, srs]);
 
   // Detecta SRS automaticamente quando há dataset carregado.
   // Estratégia: usa rankSrsCandidates (reprojeta bbox e checa se cai no Brasil)
@@ -1537,6 +1553,34 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
               SP, RJ, MG → normalmente <b>SIRGAS 2000 / UTM 23S</b>. Detecto automaticamente
               se as coordenadas parecem lat/lng.
             </p>
+            {parsed?.bbox && (
+              <div className="mt-2 rounded border border-white/10 bg-black/30 p-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium text-white/90">
+                    SRC selecionado: <b className="text-cyan-300">{srs}</b>
+                    <span className="ml-1 text-white/50">{SRS_OPTIONS.find((o) => o.code === srs)?.label}</span>
+                  </div>
+                  {selectedCandidate && (
+                    <div className="font-mono text-white/70">score {selectedCandidate.score}</div>
+                  )}
+                </div>
+                {selectedCandidate ? (
+                  <div className="mt-0.5 text-[11px] text-white/60">
+                    {selectedCandidate.reason} · Lat [{selectedCandidate.bbox.minLat.toFixed(4)} → {selectedCandidate.bbox.maxLat.toFixed(4)}] · Lng [{selectedCandidate.bbox.minLng.toFixed(4)} → {selectedCandidate.bbox.maxLng.toFixed(4)}]
+                  </div>
+                ) : (
+                  <div className="mt-0.5 text-[11px] text-white/40">
+                    {srs === LOCAL_SRS ? "Sistema local sem reprojeção — posicione manualmente no mapa." : "Não foi possível reprojetar o bbox com este SRC."}
+                  </div>
+                )}
+                <div className="mt-2">
+                  <div className="text-[10px] uppercase tracking-wider text-white/40">
+                    Pré-visualização da reprojeção para {srs}
+                  </div>
+                  <LatLngPreview parsed={parsed} srs={srs} />
+                </div>
+              </div>
+            )}
             {srsSuggestion && srsSuggestion.code !== srs && (
               <div className="mt-2 rounded border border-cyan-400/30 bg-cyan-400/10 p-2 text-xs text-cyan-100">
                 <div className="font-medium">

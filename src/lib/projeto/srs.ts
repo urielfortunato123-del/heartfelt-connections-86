@@ -226,3 +226,29 @@ export function detectBestSrs(
   if (ranked[0].score < 50) return null;
   return ranked[0];
 }
+
+/** Computa estatísticas de um SRC específico contra um bbox (para comparação). */
+export function computeCandidateForSrs(
+  code: string,
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+): SrsCandidate | null {
+  if (code === LOCAL_SRS) return null;
+  const opt = SRS_OPTIONS.find((o) => o.code === code);
+  if (!opt) return null;
+  const ll = tryReprojectBbox(code, bbox);
+  if (!ll) return null;
+  const inside =
+    ll.minLat >= BR_BOUNDS.minLat && ll.maxLat <= BR_BOUNDS.maxLat &&
+    ll.minLng >= BR_BOUNDS.minLng && ll.maxLng <= BR_BOUNDS.maxLng;
+  let score = inside ? 100 : 30;
+  const spanLat = ll.maxLat - ll.minLat;
+  const spanLng = ll.maxLng - ll.minLng;
+  if (spanLat <= 5 && spanLng <= 5) score += 20;
+  else if (spanLat <= 15 && spanLng <= 15) score += 5;
+  else score -= 20;
+  if (opt.group === "SIRGAS 2000") score += 5;
+  const reason = inside
+    ? `dentro do Brasil · span ${spanLat.toFixed(2)}°×${spanLng.toFixed(2)}°`
+    : `fora do Brasil · span ${spanLat.toFixed(2)}°×${spanLng.toFixed(2)}°`;
+  return { code: opt.code, label: opt.label, score, reason, bbox: ll };
+}
