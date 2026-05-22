@@ -91,6 +91,16 @@ export function AiAssistant({ context }: { context: AiContext }) {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [settings, setSettings] = useState<AssistantSettings>(() => loadSettings());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // ignore quota errors
+    }
+  }, [settings]);
 
   const contextString = useMemo(() => {
     const parts: string[] = [];
