@@ -358,6 +358,27 @@ export function AiAssistant({ context }: { context: AiContext }) {
               <div className="prose prose-invert prose-sm max-w-none prose-pre:bg-slate-900/80 prose-pre:text-xs prose-code:text-cyan-300">
                 <ReactMarkdown>{m.content}</ReactMarkdown>
               </div>
+              {m.role === "assistant" && m.content && (
+                <div className="mt-1.5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void copyMessage(i, m.content)}
+                    aria-label="Copiar resposta"
+                    title="Copiar"
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-white/40 transition hover:bg-white/5 hover:text-white/80"
+                  >
+                    {copiedIndex === i ? (
+                      <>
+                        <Check className="h-3 w-3" /> Copiado
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" /> Copiar
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
 
