@@ -464,6 +464,9 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     setProgress({ value: Math.max(0, Math.min(100, value)), label });
   }, []);
   const [srs, setSrs] = useState("EPSG:31983");
+  // Marca que o SRC atual veio de preferência salva (arquivo/preset) — evita
+  // que a auto-detecção sobrescreva a escolha lembrada do usuário.
+  const restoredSrsRef = useRef(false);
   const [presetName, setPresetName] = useState<keyof typeof TXT_PRESETS>("PENZD (P,E,N,Z,D)");
   const [skipHeader, setSkipHeader] = useState(0);
   const [decimal, setDecimal] = useState<"." | ",">(".");
