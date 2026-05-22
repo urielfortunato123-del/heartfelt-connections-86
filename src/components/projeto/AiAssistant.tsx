@@ -293,6 +293,16 @@ export function AiAssistant({ context }: { context: AiContext }) {
             </select>
             <button
               type="button"
+              onClick={() => void exportPdf()}
+              aria-label="Exportar conversa em PDF"
+              title="Exportar PDF"
+              disabled={messages.length === 0}
+              className="rounded-md p-1 text-white/60 hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white/60"
+            >
+              <FileDown className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => setOpen(false)}
               aria-label="Fechar"
               className="rounded-md p-1 text-white/60 hover:bg-white/5 hover:text-white"
