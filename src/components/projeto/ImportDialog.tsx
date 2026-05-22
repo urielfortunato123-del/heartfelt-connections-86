@@ -1351,6 +1351,7 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
                   </div>
                 )}
                 <PreviewCanvas parsed={parsed} />
+                <LatLngPreview parsed={parsed} srs={srs} />
                 {parsed.georef && (
                   <div className="text-amber-300">⚠ {parsed.georef.hint}</div>
                 )}
