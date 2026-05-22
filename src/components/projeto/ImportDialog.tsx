@@ -23,6 +23,59 @@ import { LOCAL_SRS, SRS_OPTIONS, detectBestSrs, looksLikeLatLng, looksLikeUTM, r
 import { ChevronDown, ChevronUp, Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+// ---------------------------------------------------------------------------
+// Persistência de SRC por arquivo/preset (reduz retrabalho em reimportações)
+// ---------------------------------------------------------------------------
+const SRS_BY_FILE_KEY = "import.srsByFile";
+const SRS_BY_PRESET_KEY = "import.srsByPreset";
+
+function readMap(key: string): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    return obj && typeof obj === "object" ? (obj as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+function writeMap(key: string, map: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+function fileKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+/** Recupera SRC salvo: prioriza match por nome de arquivo; senão por preset. */
+function loadSrsPref(fileName: string | null, presetName: string): {
+  code: string;
+  source: "file" | "preset";
+} | null {
+  if (fileName) {
+    const byFile = readMap(SRS_BY_FILE_KEY)[fileKey(fileName)];
+    if (byFile) return { code: byFile, source: "file" };
+  }
+  const byPreset = readMap(SRS_BY_PRESET_KEY)[presetName];
+  if (byPreset) return { code: byPreset, source: "preset" };
+  return null;
+}
+function saveSrsPref(fileName: string | null, presetName: string, code: string) {
+  if (fileName) {
+    const m = readMap(SRS_BY_FILE_KEY);
+    m[fileKey(fileName)] = code;
+    writeMap(SRS_BY_FILE_KEY, m);
+  }
+  const mp = readMap(SRS_BY_PRESET_KEY);
+  mp[presetName] = code;
+  writeMap(SRS_BY_PRESET_KEY, mp);
+}
+
+
 /**
  * Calcula bbox lat/lng após reprojetar para WGS84 e lista pontos/segmentos
  * que ficaram fora do globo (lat ∉ [-90,90] ou lng ∉ [-180,180] ou NaN).
@@ -464,6 +517,9 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     setProgress({ value: Math.max(0, Math.min(100, value)), label });
   }, []);
   const [srs, setSrs] = useState("EPSG:31983");
+  // Marca que o SRC atual veio de preferência salva (arquivo/preset) — evita
+  // que a auto-detecção sobrescreva a escolha lembrada do usuário.
+  const restoredSrsRef = useRef(false);
   const [presetName, setPresetName] = useState<keyof typeof TXT_PRESETS>("PENZD (P,E,N,Z,D)");
   const [skipHeader, setSkipHeader] = useState(0);
   const [decimal, setDecimal] = useState<"." | ",">(".");
@@ -635,6 +691,13 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     if (lastAutoFor.current === key) return;
     lastAutoFor.current = key;
 
+    // Se já restauramos um SRC salvo para este arquivo/preset, não sobrescreve.
+    if (restoredSrsRef.current) {
+      restoredSrsRef.current = false;
+      return;
+    }
+
+
     if (srsSuggestion && srsSuggestion.code !== srs) {
       setSrs(srsSuggestion.code);
       log(
@@ -703,13 +766,31 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetName, skipHeader, decimal]);
 
+  // Persiste a escolha de SRC para o arquivo atual (e como fallback para o
+  // preset) toda vez que o usuário muda — assim a próxima importação já abre
+  // com o SRC correto sem precisar reaplicar a sugestão.
+  useEffect(() => {
+    if (!file) return;
+    saveSrsPref(file.name, presetName, srs);
+  }, [srs, file, presetName]);
+
+
   const handleFile = async (f: File | null) => {
     setFile(f);
     setParsed(null);
     setDetection(null);
     setDecimalInfo(null);
     if (!f) return;
+    // Restaura SRC salvo para este arquivo (ou, em fallback, para este preset).
+    const pref = loadSrsPref(f.name, presetName);
+    if (pref) {
+      restoredSrsRef.current = true;
+      setSrs(pref.code);
+      const origem = pref.source === "file" ? `arquivo "${f.name}"` : `preset "${presetName}"`;
+      log(`SRC restaurado de preferência salva (${origem}): ${pref.code}.`, "ok");
+    }
     setProgress({ value: 5, label: `Preparando "${f.name}"…` });
+
     const isTxtFile = f.name.toLowerCase().endsWith(".txt") || f.name.toLowerCase().endsWith(".csv");
     if (isTxtFile) {
       // 1) Detecta o separador decimal (vírgula vs ponto) antes de qualquer parse,
