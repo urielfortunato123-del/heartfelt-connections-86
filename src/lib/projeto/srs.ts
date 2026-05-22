@@ -128,3 +128,101 @@ export function validateSrsBbox(
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Auto-detecção do SRC mais provável
+// ---------------------------------------------------------------------------
+
+/** Limites geográficos aproximados do Brasil (margem folgada). */
+const BR_BOUNDS = { minLat: -35, maxLat: 6, minLng: -75, maxLng: -33 };
+
+function tryReprojectBbox(
+  srs: string,
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+): { minLat: number; maxLat: number; minLng: number; maxLng: number } | null {
+  try {
+    const corners = [
+      [bbox.minX, bbox.minY],
+      [bbox.maxX, bbox.minY],
+      [bbox.minX, bbox.maxY],
+      [bbox.maxX, bbox.maxY],
+    ];
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (const [x, y] of corners) {
+      const ll = toLatLng(srs, x, y);
+      if (!Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)) return null;
+      if (Math.abs(ll.lat) > 90 || Math.abs(ll.lng) > 180) return null;
+      if (ll.lat < minLat) minLat = ll.lat;
+      if (ll.lat > maxLat) maxLat = ll.lat;
+      if (ll.lng < minLng) minLng = ll.lng;
+      if (ll.lng > maxLng) maxLng = ll.lng;
+    }
+    return { minLat, maxLat, minLng, maxLng };
+  } catch {
+    return null;
+  }
+}
+
+export type SrsCandidate = {
+  code: string;
+  label: string;
+  score: number;
+  reason: string;
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number };
+};
+
+/**
+ * Pontua todos os SRCs candidatos contra o bbox dos dados: reprojeta e
+ * verifica se o resultado cai dentro do Brasil com extensão plausível.
+ */
+export function rankSrsCandidates(
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+): SrsCandidate[] {
+  const looksUtm =
+    bbox.minX > 1e5 && bbox.maxX < 1e6 &&
+    bbox.minY > 5.5e6 && bbox.maxY < 1e7;
+  const looksGeo =
+    Math.abs(bbox.minX) <= 180 && Math.abs(bbox.maxX) <= 180 &&
+    Math.abs(bbox.minY) <= 90 && Math.abs(bbox.maxY) <= 90;
+
+  const out: SrsCandidate[] = [];
+  for (const opt of SRS_OPTIONS) {
+    if (opt.code === LOCAL_SRS) continue;
+    const isGeo = opt.code === "EPSG:4326" || opt.code === "EPSG:4674";
+    if (isGeo && !looksGeo) continue;
+    if (!isGeo && !looksUtm) continue;
+
+    const ll = tryReprojectBbox(opt.code, bbox);
+    if (!ll) continue;
+
+    const inside =
+      ll.minLat >= BR_BOUNDS.minLat && ll.maxLat <= BR_BOUNDS.maxLat &&
+      ll.minLng >= BR_BOUNDS.minLng && ll.maxLng <= BR_BOUNDS.maxLng;
+    let score = inside ? 100 : 30;
+
+    const spanLat = ll.maxLat - ll.minLat;
+    const spanLng = ll.maxLng - ll.minLng;
+    if (spanLat <= 5 && spanLng <= 5) score += 20;
+    else if (spanLat <= 15 && spanLng <= 15) score += 5;
+    else score -= 20;
+
+    if (opt.group === "SIRGAS 2000") score += 5;
+
+    const reason = inside
+      ? `dentro do Brasil · span ${spanLat.toFixed(2)}°×${spanLng.toFixed(2)}°`
+      : `fora do Brasil · span ${spanLat.toFixed(2)}°×${spanLng.toFixed(2)}°`;
+
+    out.push({ code: opt.code, label: opt.label, score, reason, bbox: ll });
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out;
+}
+
+export function detectBestSrs(
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+): SrsCandidate | null {
+  const ranked = rankSrsCandidates(bbox);
+  if (ranked.length === 0) return null;
+  if (ranked[0].score < 50) return null;
+  return ranked[0];
+}
