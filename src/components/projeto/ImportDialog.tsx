@@ -221,7 +221,18 @@ function SrsCandidatesTable({
   onSelect: (code: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const candidates = useMemo(() => rankSrsCandidates(bbox), [bbox]);
+  const candidates = useMemo(() => {
+    const list = rankSrsCandidates(bbox);
+    const already = list.some((c) => c.code === selectedCode);
+    if (!already) {
+      const extra = computeCandidateForSrs(selectedCode, bbox);
+      if (extra) {
+        list.push(extra);
+        list.sort((a, b) => b.score - a.score);
+      }
+    }
+    return list;
+  }, [bbox, selectedCode]);
 
   if (candidates.length === 0) return null;
 
