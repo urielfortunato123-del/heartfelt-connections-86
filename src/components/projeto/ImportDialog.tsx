@@ -24,6 +24,137 @@ import { Loader2, Maximize2, Minus, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 /**
+ * Calcula bbox lat/lng após reprojetar para WGS84 e lista pontos/segmentos
+ * que ficaram fora do globo (lat ∉ [-90,90] ou lng ∉ [-180,180] ou NaN).
+ */
+function LatLngPreview({ parsed, srs }: { parsed: ImportedDataset; srs: string }) {
+  const info = useMemo(() => {
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    let total = 0, valid = 0;
+    const badPoints: { idx: number; label?: string; lat: number; lng: number }[] = [];
+    const badSegs: { pl: number; vtx: number; lat: number; lng: number }[] = [];
+    const isBad = (lat: number, lng: number) =>
+      !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180;
+    try {
+      parsed.points.forEach((p, idx) => {
+        const ll = toLatLng(srs, p.x, p.y);
+        total++;
+        if (isBad(ll.lat, ll.lng)) {
+          if (badPoints.length < 5) badPoints.push({ idx, label: p.label, lat: ll.lat, lng: ll.lng });
+        } else {
+          valid++;
+          if (ll.lat < minLat) minLat = ll.lat;
+          if (ll.lat > maxLat) maxLat = ll.lat;
+          if (ll.lng < minLng) minLng = ll.lng;
+          if (ll.lng > maxLng) maxLng = ll.lng;
+        }
+      });
+      parsed.polylines.forEach((pl, pi) => {
+        pl.coords.forEach((v, vi) => {
+          const ll = toLatLng(srs, v.x, v.y);
+          total++;
+          if (isBad(ll.lat, ll.lng)) {
+            if (badSegs.length < 5) badSegs.push({ pl: pi, vtx: vi, lat: ll.lat, lng: ll.lng });
+          } else {
+            valid++;
+            if (ll.lat < minLat) minLat = ll.lat;
+            if (ll.lat > maxLat) maxLat = ll.lat;
+            if (ll.lng < minLng) minLng = ll.lng;
+            if (ll.lng > maxLng) maxLng = ll.lng;
+          }
+        });
+      });
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) } as const;
+    }
+    const badTotal = total - valid;
+    return {
+      total,
+      valid,
+      badTotal,
+      badPoints,
+      badSegs,
+      bbox: valid > 0 ? { minLat, maxLat, minLng, maxLng } : null,
+    } as const;
+  }, [parsed, srs]);
+
+  if ("error" in info) {
+    return (
+      <div className="mt-2 rounded border border-red-400/30 bg-red-400/10 p-2 text-[11px] text-red-200">
+        Falha ao reprojetar para WGS84: {info.error}
+      </div>
+    );
+  }
+
+  const fmt = (n: number) => n.toFixed(5);
+  const allBad = info.total > 0 && info.valid === 0;
+
+  return (
+    <div
+      className={`mt-2 rounded border p-2 text-[11px] ${
+        allBad
+          ? "border-red-400/40 bg-red-400/10 text-red-100"
+          : info.badTotal > 0
+          ? "border-amber-400/30 bg-amber-400/10 text-amber-100"
+          : "border-emerald-400/25 bg-emerald-400/5 text-emerald-100"
+      }`}
+    >
+      <div className="font-mono uppercase tracking-wider text-[10px] opacity-70">
+        Estimativa após conversão ({srs} → WGS84)
+      </div>
+      {info.bbox ? (
+        <div className="mt-1 font-mono">
+          Lat [<b>{fmt(info.bbox.minLat)}</b> → <b>{fmt(info.bbox.maxLat)}</b>] · Lng [
+          <b>{fmt(info.bbox.minLng)}</b> → <b>{fmt(info.bbox.maxLng)}</b>]
+        </div>
+      ) : (
+        <div className="mt-1">Nenhum ponto válido — todos caíram fora do globo.</div>
+      )}
+      <div className="mt-1 opacity-80">
+        Válidos: <b>{info.valid}</b>/{info.total}
+        {info.badTotal > 0 && (
+          <>
+            {" · "}fora do globo: <b>{info.badTotal}</b>
+          </>
+        )}
+      </div>
+      {(info.badPoints.length > 0 || info.badSegs.length > 0) && (
+        <div className="mt-2 space-y-1">
+          <div className="text-[10px] uppercase tracking-wider opacity-70">
+            Amostra dos que ficaram fora do globo
+          </div>
+          <ul className="ml-4 list-disc font-mono text-[10.5px]">
+            {info.badPoints.map((p) => (
+              <li key={`p-${p.idx}`}>
+                Ponto #{p.idx + 1}
+                {p.label ? ` (${p.label})` : ""}: lat={Number.isFinite(p.lat) ? p.lat.toFixed(2) : "NaN"},
+                lng={Number.isFinite(p.lng) ? p.lng.toFixed(2) : "NaN"}
+              </li>
+            ))}
+            {info.badSegs.map((s, i) => (
+              <li key={`s-${i}`}>
+                Polilinha #{s.pl + 1}, vértice {s.vtx + 1}: lat=
+                {Number.isFinite(s.lat) ? s.lat.toFixed(2) : "NaN"}, lng=
+                {Number.isFinite(s.lng) ? s.lng.toFixed(2) : "NaN"}
+              </li>
+            ))}
+          </ul>
+          {info.badTotal > info.badPoints.length + info.badSegs.length && (
+            <div className="text-[10px] opacity-60">
+              … e mais {info.badTotal - info.badPoints.length - info.badSegs.length} vértice(s)/ponto(s).
+            </div>
+          )}
+          <div className="text-[10px] opacity-70">
+            Dica: troque o SRC ou use "Sistema local" — ao confirmar, faço esse fallback
+            automaticamente se necessário.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Mini visualizador SVG dos pontos/polilinhas importadas, com zoom e reset
  * para inspecionar arquivos grandes sem precisar abrir no mapa.
  */
