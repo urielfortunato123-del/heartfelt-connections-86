@@ -365,6 +365,17 @@ export function AiAssistant({ context }: { context: AiContext }) {
             </button>
             <button
               type="button"
+              onClick={() => setSettingsOpen((v) => !v)}
+              aria-label="Configurações do assistente"
+              title="Configurações"
+              className={cn(
+                "rounded-md p-1 hover:bg-white/5 hover:text-white",
+                settingsOpen ? "bg-white/10 text-white" : "text-white/60",
+              )}
+            >
+              <Settings className="h-4 w-4" />
+            <button
+              type="button"
               onClick={() => setOpen(false)}
               aria-label="Fechar"
               className="rounded-md p-1 text-white/60 hover:bg-white/5 hover:text-white"
