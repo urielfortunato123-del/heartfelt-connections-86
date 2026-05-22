@@ -1362,7 +1362,44 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
               SP, RJ, MG → normalmente <b>SIRGAS 2000 / UTM 23S</b>. Detecto automaticamente
               se as coordenadas parecem lat/lng.
             </p>
+            {srsSuggestion && srsSuggestion.code !== srs && (
+              <div className="mt-2 rounded border border-cyan-400/30 bg-cyan-400/10 p-2 text-xs text-cyan-100">
+                <div className="font-medium">
+                  SRC sugerido: <b>{srsSuggestion.code}</b>
+                </div>
+                <div className="text-cyan-200/80">{srsSuggestion.label}</div>
+                <div className="mt-0.5 text-[11px] text-cyan-200/70">
+                  Motivo: {srsSuggestion.reason} · score {srsSuggestion.score}
+                </div>
+                <div className="mt-0.5 text-[11px] text-cyan-200/70">
+                  Lat [{srsSuggestion.bbox.minLat.toFixed(4)} → {srsSuggestion.bbox.maxLat.toFixed(4)}] ·
+                  Lng [{srsSuggestion.bbox.minLng.toFixed(4)} → {srsSuggestion.bbox.maxLng.toFixed(4)}]
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setSrs(srsSuggestion.code);
+                      toast.success(`SRC aplicado: ${srsSuggestion.code}`);
+                      log(`SRC aplicado manualmente via sugestão: ${srsSuggestion.code}.`, "ok");
+                    }}
+                  >
+                    Aplicar e reprojetar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => log(`Sugestão de SRC ${srsSuggestion.code} ignorada — mantido ${srs}.`, "info")}
+                  >
+                    Manter {srs}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
+
 
           {parsed && (() => {
             const srsWarning = parsed.bbox ? validateSrsBbox(srs, parsed.bbox) : null;
