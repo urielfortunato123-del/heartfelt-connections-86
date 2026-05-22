@@ -158,6 +158,7 @@ export function AiAssistant({ context }: { context: AiContext }) {
             messages: next,
             model,
             context: contextString || undefined,
+            systemPrompt: settings.systemPrompt.trim() || undefined,
           }),
           signal: controller.signal,
         });
