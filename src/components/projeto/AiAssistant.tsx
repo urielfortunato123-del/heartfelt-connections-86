@@ -213,7 +213,7 @@ export function AiAssistant({ context }: { context: AiContext }) {
         abortRef.current = null;
       }
     },
-    [contextString, loading, messages, model],
+    [contextString, loading, messages, model, settings.systemPrompt],
   );
 
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
