@@ -46,6 +46,7 @@ import type RouteMapType from "@/components/projeto/RouteMap";
 type RouteMapComponent = ComponentType<React.ComponentProps<typeof RouteMapType>>;
 import { PdfPreviewDialog } from "@/components/projeto/PdfPreviewDialog";
 import { ImportDialog, type OverlayFeature } from "@/components/projeto/ImportDialog";
+import { AiAssistant } from "@/components/projeto/AiAssistant";
 
 function MapPlaceholder({ label }: { label: string }) {
   return (
@@ -1302,6 +1303,16 @@ function ProjetoPage() {
         }}
         onImport={handleImportOverlay}
         onStatus={pushImportLog}
+      />
+      <AiAssistant
+        context={{
+          projectName: meta.name,
+          rodovia: rodovia?.ref,
+          rowsCount: rows.length,
+          kmStart: meta.startKm,
+          kmEnd: meta.endKm,
+          hasRoute: polyline.length >= 2,
+        }}
       />
     </div>
   );
