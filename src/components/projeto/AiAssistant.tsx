@@ -505,3 +505,129 @@ export function AiAssistant({ context }: { context: AiContext }) {
     </>
   );
 }
+
+function SettingsPanel({
+  settings,
+  onChange,
+  onClose,
+}: {
+  settings: AssistantSettings;
+  onChange: (s: AssistantSettings) => void;
+  onClose: () => void;
+}) {
+  const [draftPrompt, setDraftPrompt] = useState(settings.systemPrompt);
+  const [draftQuicks, setDraftQuicks] = useState<string[]>(settings.quickPrompts);
+
+  const updateQuick = (i: number, v: string) => {
+    setDraftQuicks((arr) => arr.map((p, idx) => (idx === i ? v : p)));
+  };
+  const removeQuick = (i: number) => {
+    setDraftQuicks((arr) => arr.filter((_, idx) => idx !== i));
+  };
+  const addQuick = () => setDraftQuicks((arr) => [...arr, ""]);
+
+  const save = () => {
+    const cleaned = draftQuicks.map((p) => p.trim()).filter((p) => p.length > 0);
+    onChange({
+      systemPrompt: draftPrompt.trim(),
+      quickPrompts: cleaned.length > 0 ? cleaned : DEFAULT_QUICK_PROMPTS,
+    });
+    toast.success("Configurações salvas");
+    onClose();
+  };
+
+  const reset = () => {
+    setDraftPrompt("");
+    setDraftQuicks(DEFAULT_QUICK_PROMPTS);
+  };
+
+  return (
+    <div className="space-y-4 rounded-lg border border-purple-400/30 bg-purple-500/5 p-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-white">Configurações do assistente</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar configurações"
+          className="rounded-md p-1 text-white/60 hover:bg-white/5 hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <label className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-white/60">
+          <span>Mensagem do sistema</span>
+          <span className="text-white/30 normal-case">
+            Vazio = usa padrão técnico
+          </span>
+        </label>
+        <textarea
+          value={draftPrompt}
+          onChange={(e) => setDraftPrompt(e.target.value)}
+          rows={6}
+          placeholder={DEFAULT_SYSTEM_PROMPT}
+          className="w-full resize-y rounded-md border border-white/10 bg-slate-800/60 px-2 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[11px] font-medium uppercase tracking-wide text-white/60">
+            Prompts rápidos
+          </label>
+          <button
+            type="button"
+            onClick={addQuick}
+            className="inline-flex items-center gap-1 rounded border border-white/10 px-2 py-0.5 text-[10px] text-white/70 hover:bg-white/5"
+          >
+            <Plus className="h-3 w-3" /> Adicionar
+          </button>
+        </div>
+        <div className="space-y-1.5">
+          {draftQuicks.map((p, i) => (
+            <div key={i} className="flex gap-1">
+              <input
+                value={p}
+                onChange={(e) => updateQuick(i, e.target.value)}
+                placeholder={`Prompt ${i + 1}`}
+                className="flex-1 rounded-md border border-white/10 bg-slate-800/60 px-2 py-1 text-xs text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => removeQuick(i)}
+                aria-label="Remover prompt"
+                className="rounded-md p-1 text-white/40 hover:bg-red-500/10 hover:text-red-300"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          {draftQuicks.length === 0 && (
+            <div className="text-[11px] text-white/40">
+              Nenhum prompt. Adicione um ou salve para restaurar os padrões.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+        <button
+          type="button"
+          onClick={reset}
+          className="inline-flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[11px] text-white/60 hover:bg-white/5 hover:text-white"
+        >
+          <RotateCcw className="h-3 w-3" /> Restaurar padrões
+        </button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={save}
+          className="bg-gradient-to-br from-purple-500 to-cyan-500 hover:opacity-90"
+        >
+          Salvar
+        </Button>
+      </div>
+    </div>
+  );
+}
