@@ -766,6 +766,15 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetName, skipHeader, decimal]);
 
+  // Persiste a escolha de SRC para o arquivo atual (e como fallback para o
+  // preset) toda vez que o usuário muda — assim a próxima importação já abre
+  // com o SRC correto sem precisar reaplicar a sugestão.
+  useEffect(() => {
+    if (!file) return;
+    saveSrsPref(file.name, presetName, srs);
+  }, [srs, file, presetName]);
+
+
   const handleFile = async (f: File | null) => {
     setFile(f);
     setParsed(null);
