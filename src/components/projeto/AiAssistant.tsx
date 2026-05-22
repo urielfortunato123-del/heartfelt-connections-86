@@ -38,7 +38,7 @@ export function AiAssistant({ context }: { context: AiContext }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const ask = useServerFn(askPoe);
+  const abortRef = useRef<AbortController | null>(null);
 
   const contextString = useMemo(() => {
     const parts: string[] = [];
@@ -59,6 +59,8 @@ export function AiAssistant({ context }: { context: AiContext }) {
     }
   }, [messages, loading]);
 
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   const send = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
@@ -67,31 +69,88 @@ export function AiAssistant({ context }: { context: AiContext }) {
       setMessages(next);
       setInput("");
       setLoading(true);
-      try {
-        const result = await ask({
-          data: { messages: next, model, context: contextString || undefined },
+
+      // placeholder assistant message that we update as tokens arrive
+      setMessages((m) => [...m, { role: "assistant", content: "" }]);
+      let acc = "";
+      const appendDelta = (delta: string) => {
+        acc += delta;
+        setMessages((m) => {
+          const copy = m.slice();
+          const last = copy[copy.length - 1];
+          if (last && last.role === "assistant") {
+            copy[copy.length - 1] = { ...last, content: acc };
+          }
+          return copy;
         });
-        if (result.ok) {
-          setMessages((m) => [...m, { role: "assistant", content: result.content }]);
-        } else {
-          setMessages((m) => [
-            ...m,
-            { role: "assistant", content: `⚠️ ${result.error}` },
-          ]);
+      };
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        const resp = await fetch("/api/poe-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: next,
+            model,
+            context: contextString || undefined,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!resp.ok || !resp.body) {
+          const errJson = await resp.json().catch(() => ({ error: resp.statusText }));
+          appendDelta(`⚠️ ${errJson.error || "Falha na requisição"}`);
+          return;
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let done = false;
+
+        while (!done) {
+          const { done: rDone, value } = await reader.read();
+          if (rDone) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let nl: number;
+          while ((nl = buffer.indexOf("\n")) !== -1) {
+            let line = buffer.slice(0, nl);
+            buffer = buffer.slice(nl + 1);
+            if (line.endsWith("\r")) line = line.slice(0, -1);
+            if (!line || line.startsWith(":")) continue;
+            if (!line.startsWith("data: ")) continue;
+            const payload = line.slice(6).trim();
+            if (payload === "[DONE]") {
+              done = true;
+              break;
+            }
+            try {
+              const json = JSON.parse(payload);
+              const delta = json.choices?.[0]?.delta?.content;
+              if (typeof delta === "string" && delta) appendDelta(delta);
+            } catch {
+              // partial JSON — put back and wait for more
+              buffer = line + "\n" + buffer;
+              break;
+            }
+          }
         }
       } catch (error) {
-        setMessages((m) => [
-          ...m,
-          {
-            role: "assistant",
-            content: `⚠️ ${error instanceof Error ? error.message : "Erro inesperado"}`,
-          },
-        ]);
+        if ((error as Error).name !== "AbortError") {
+          appendDelta(
+            `\n\n⚠️ ${error instanceof Error ? error.message : "Erro inesperado"}`,
+          );
+        }
       } finally {
         setLoading(false);
+        abortRef.current = null;
       }
     },
-    [ask, contextString, loading, messages, model],
+    [contextString, loading, messages, model],
   );
 
   return (
