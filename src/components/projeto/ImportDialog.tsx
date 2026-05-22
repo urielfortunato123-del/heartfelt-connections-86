@@ -933,14 +933,30 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     let usedSrs = srs;
     try {
       log(`Convertendo coordenadas (${srs}) → WGS84…`);
+
+      // Validação 1: os números do arquivo cabem nas faixas típicas do SRS?
+      // (UTM Sul exige E∈[100k,900k] e N∈[5.5M,10M]). Quando não cabem,
+      // são pequenos demais (provável sistema local da obra ou colunas
+      // mapeadas erradas) e a reprojeção devolveria um ponto perto de (0°,
+      // meridiano central) — i.e. fora do Brasil, geralmente no Atlântico.
+      const srsRangeWarn =
+        srs !== LOCAL_SRS && parsed.bbox ? validateSrsBbox(srs, parsed.bbox) : null;
+
       let result = reproject(srs);
-      if (!result.valid) {
+      const fellOutsideGlobe = !result.valid;
+
+      if (srsRangeWarn || fellOutsideGlobe) {
+        const motivo = srsRangeWarn
+          ? `os números do arquivo não cabem nas faixas de ${srs}`
+          : `a reprojeção devolveu coordenadas fora do globo`;
         log(
-          `Coordenadas fora do globo após reprojetar com ${srs} — caindo para "Sistema local". Posicione manualmente arrastando.`,
+          `${motivo} — caindo para "Sistema local". Arraste o overlay para o lugar certo no mapa.`,
           "warn",
         );
         toast.warning(
-          `SRC ${srs} não bate com os números do arquivo. Usei "Sistema local" — arraste o overlay para o lugar certo.`,
+          `O SRC ${srs} não bate com os dados (${
+            srsRangeWarn ? "fora da faixa esperada" : "fora do globo"
+          }). Usei "Sistema local" — arraste o overlay para o lugar correto.`,
         );
         usedSrs = LOCAL_SRS;
         result = reproject(LOCAL_SRS);
