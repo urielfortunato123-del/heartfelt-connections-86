@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Check, Copy, FileDown, Loader2, Send, Sparkles, X } from "lucide-react";
+import {
+  Bot,
+  Check,
+  Copy,
+  FileDown,
+  Loader2,
+  Plus,
+  RotateCcw,
+  Send,
+  Settings,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
@@ -25,12 +38,50 @@ const MODELS = [
   { id: "Claude-Opus-4.1", label: "Claude Opus 4.1" },
 ] as const;
 
-const QUICK_PROMPTS = [
+const DEFAULT_QUICK_PROMPTS = [
   "Qual SRS devo usar para um traçado em São Paulo?",
   "Como converter coordenadas UTM 23S para WGS84?",
   "Sugira o sentido de estaqueamento para esta rodovia",
   "Explique a diferença entre km, hectômetro e estaca",
 ];
+
+const DEFAULT_SYSTEM_PROMPT = `Você é um assistente especialista em engenharia rodoviária e GIS,
+integrado ao software KM/Converter Pro. Ajude o usuário com:
+- Interpretação de arquivos DXF/TXT/KML/Shapefile
+- Detecção e conversão de sistemas de coordenadas (SIRGAS 2000, UTM, WGS84)
+- Sugestões de estaqueamento, sentido de rodovia e marcos quilométricos
+- Padrões DER-SP, DNIT e concessionárias
+- Cálculos de quilometragem, hectômetros, estacas
+
+Responda em português brasileiro, de forma técnica, objetiva e profissional.
+Use markdown quando útil (listas, tabelas, blocos de código).`;
+
+const SETTINGS_KEY = "kmconv:ai-assistant-settings";
+
+type AssistantSettings = {
+  systemPrompt: string;
+  quickPrompts: string[];
+};
+
+function loadSettings(): AssistantSettings {
+  if (typeof window === "undefined") {
+    return { systemPrompt: "", quickPrompts: DEFAULT_QUICK_PROMPTS };
+  }
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { systemPrompt: "", quickPrompts: DEFAULT_QUICK_PROMPTS };
+    const parsed = JSON.parse(raw) as Partial<AssistantSettings>;
+    return {
+      systemPrompt: typeof parsed.systemPrompt === "string" ? parsed.systemPrompt : "",
+      quickPrompts:
+        Array.isArray(parsed.quickPrompts) && parsed.quickPrompts.length > 0
+          ? parsed.quickPrompts.filter((p): p is string => typeof p === "string")
+          : DEFAULT_QUICK_PROMPTS,
+    };
+  } catch {
+    return { systemPrompt: "", quickPrompts: DEFAULT_QUICK_PROMPTS };
+  }
+}
 
 export function AiAssistant({ context }: { context: AiContext }) {
   const [open, setOpen] = useState(false);
@@ -40,6 +91,16 @@ export function AiAssistant({ context }: { context: AiContext }) {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [settings, setSettings] = useState<AssistantSettings>(() => loadSettings());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // ignore quota errors
+    }
+  }, [settings]);
 
   const contextString = useMemo(() => {
     const parts: string[] = [];
@@ -97,6 +158,7 @@ export function AiAssistant({ context }: { context: AiContext }) {
             messages: next,
             model,
             context: contextString || undefined,
+            systemPrompt: settings.systemPrompt.trim() || undefined,
           }),
           signal: controller.signal,
         });
@@ -151,7 +213,7 @@ export function AiAssistant({ context }: { context: AiContext }) {
         abortRef.current = null;
       }
     },
-    [contextString, loading, messages, model],
+    [contextString, loading, messages, model, settings.systemPrompt],
   );
 
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -303,6 +365,18 @@ export function AiAssistant({ context }: { context: AiContext }) {
             </button>
             <button
               type="button"
+              onClick={() => setSettingsOpen((v) => !v)}
+              aria-label="Configurações do assistente"
+              title="Configurações"
+              className={cn(
+                "rounded-md p-1 hover:bg-white/5 hover:text-white",
+                settingsOpen ? "bg-white/10 text-white" : "text-white/60",
+              )}
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => setOpen(false)}
               aria-label="Fechar"
               className="rounded-md p-1 text-white/60 hover:bg-white/5 hover:text-white"
@@ -313,6 +387,13 @@ export function AiAssistant({ context }: { context: AiContext }) {
         </header>
 
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          {settingsOpen && (
+            <SettingsPanel
+              settings={settings}
+              onChange={setSettings}
+              onClose={() => setSettingsOpen(false)}
+            />
+          )}
           {messages.length === 0 && (
             <div className="space-y-3">
               <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-white/70">
@@ -331,7 +412,7 @@ export function AiAssistant({ context }: { context: AiContext }) {
                 <div className="text-[11px] font-medium uppercase tracking-wide text-white/40">
                   Sugestões
                 </div>
-                {QUICK_PROMPTS.map((p) => (
+                {settings.quickPrompts.map((p: string) => (
                   <button
                     key={p}
                     type="button"
@@ -422,5 +503,131 @@ export function AiAssistant({ context }: { context: AiContext }) {
         </form>
       </aside>
     </>
+  );
+}
+
+function SettingsPanel({
+  settings,
+  onChange,
+  onClose,
+}: {
+  settings: AssistantSettings;
+  onChange: (s: AssistantSettings) => void;
+  onClose: () => void;
+}) {
+  const [draftPrompt, setDraftPrompt] = useState(settings.systemPrompt);
+  const [draftQuicks, setDraftQuicks] = useState<string[]>(settings.quickPrompts);
+
+  const updateQuick = (i: number, v: string) => {
+    setDraftQuicks((arr) => arr.map((p, idx) => (idx === i ? v : p)));
+  };
+  const removeQuick = (i: number) => {
+    setDraftQuicks((arr) => arr.filter((_, idx) => idx !== i));
+  };
+  const addQuick = () => setDraftQuicks((arr) => [...arr, ""]);
+
+  const save = () => {
+    const cleaned = draftQuicks.map((p) => p.trim()).filter((p) => p.length > 0);
+    onChange({
+      systemPrompt: draftPrompt.trim(),
+      quickPrompts: cleaned.length > 0 ? cleaned : DEFAULT_QUICK_PROMPTS,
+    });
+    toast.success("Configurações salvas");
+    onClose();
+  };
+
+  const reset = () => {
+    setDraftPrompt("");
+    setDraftQuicks(DEFAULT_QUICK_PROMPTS);
+  };
+
+  return (
+    <div className="space-y-4 rounded-lg border border-purple-400/30 bg-purple-500/5 p-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-white">Configurações do assistente</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar configurações"
+          className="rounded-md p-1 text-white/60 hover:bg-white/5 hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <label className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-white/60">
+          <span>Mensagem do sistema</span>
+          <span className="text-white/30 normal-case">
+            Vazio = usa padrão técnico
+          </span>
+        </label>
+        <textarea
+          value={draftPrompt}
+          onChange={(e) => setDraftPrompt(e.target.value)}
+          rows={6}
+          placeholder={DEFAULT_SYSTEM_PROMPT}
+          className="w-full resize-y rounded-md border border-white/10 bg-slate-800/60 px-2 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[11px] font-medium uppercase tracking-wide text-white/60">
+            Prompts rápidos
+          </label>
+          <button
+            type="button"
+            onClick={addQuick}
+            className="inline-flex items-center gap-1 rounded border border-white/10 px-2 py-0.5 text-[10px] text-white/70 hover:bg-white/5"
+          >
+            <Plus className="h-3 w-3" /> Adicionar
+          </button>
+        </div>
+        <div className="space-y-1.5">
+          {draftQuicks.map((p, i) => (
+            <div key={i} className="flex gap-1">
+              <input
+                value={p}
+                onChange={(e) => updateQuick(i, e.target.value)}
+                placeholder={`Prompt ${i + 1}`}
+                className="flex-1 rounded-md border border-white/10 bg-slate-800/60 px-2 py-1 text-xs text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => removeQuick(i)}
+                aria-label="Remover prompt"
+                className="rounded-md p-1 text-white/40 hover:bg-red-500/10 hover:text-red-300"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          {draftQuicks.length === 0 && (
+            <div className="text-[11px] text-white/40">
+              Nenhum prompt. Adicione um ou salve para restaurar os padrões.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+        <button
+          type="button"
+          onClick={reset}
+          className="inline-flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[11px] text-white/60 hover:bg-white/5 hover:text-white"
+        >
+          <RotateCcw className="h-3 w-3" /> Restaurar padrões
+        </button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={save}
+          className="bg-gradient-to-br from-purple-500 to-cyan-500 hover:opacity-90"
+        >
+          Salvar
+        </Button>
+      </div>
+    </div>
   );
 }
