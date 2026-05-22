@@ -392,7 +392,7 @@ export function AiAssistant({ context }: { context: AiContext }) {
                 <div className="text-[11px] font-medium uppercase tracking-wide text-white/40">
                   Sugestões
                 </div>
-                {QUICK_PROMPTS.map((p) => (
+                {settings.quickPrompts.map((p: string) => (
                   <button
                     key={p}
                     type="button"
