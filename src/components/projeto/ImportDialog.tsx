@@ -520,22 +520,49 @@ export function ImportDialog({ open, onOpenChange, onImport, onStatus }: Props) 
     });
   }, [rawSample, txtFormat]);
 
+  // Sugestão de SRC mais provável (baseada no bbox do dataset).
+  const srsSuggestion = useMemo<SrsCandidate | null>(() => {
+    if (!parsed?.bbox) return null;
+    return detectBestSrs(parsed.bbox);
+  }, [parsed]);
+
   // Detecta SRS automaticamente quando há dataset carregado.
+  // Estratégia: usa rankSrsCandidates (reprojeta bbox e checa se cai no Brasil)
+  // e sugere o melhor; cai para heurística simples quando nada bate.
+  const lastAutoFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!parsed) return;
+    if (!parsed) {
+      lastAutoFor.current = null;
+      return;
+    }
+    // Só aplica auto-detect uma vez por dataset, para não sobrescrever
+    // escolha manual do usuário a cada re-parse.
+    const key = `${parsed.source}|${parsed.points.length}|${parsed.polylines.length}`;
+    if (lastAutoFor.current === key) return;
+    lastAutoFor.current = key;
+
+    if (srsSuggestion && srsSuggestion.code !== srs) {
+      setSrs(srsSuggestion.code);
+      log(
+        `SRC sugerido aplicado: ${srsSuggestion.code} — ${srsSuggestion.reason}.`,
+        "ok",
+      );
+      return;
+    }
+    // Fallback: heurística antiga por ordem de grandeza.
     const p = parsed.points[0] || parsed.polylines[0]?.coords[0];
     if (!p) return;
     const x = "x" in p ? p.x : 0;
     const y = "y" in p ? p.y : 0;
     if (looksLikeLatLng(x, y)) setSrs("EPSG:4326");
     else if (looksLikeUTM(x, y)) {
-      // mantém o SRS atual se já é UTM Sul; caso contrário sugere SIRGAS 23S
       if (!srs.startsWith("EPSG:3198") && !srs.startsWith("EPSG:2919") && !srs.startsWith("EPSG:2252") && !srs.startsWith("EPSG:3272")) {
         setSrs("EPSG:31983");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parsed]);
+  }, [parsed, srsSuggestion]);
+
 
   const log = useCallback(
     (msg: string, level: "info" | "ok" | "warn" | "error" = "info") => onStatus?.(msg, level),
